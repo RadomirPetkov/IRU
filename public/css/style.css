@@ -221,14 +221,14 @@ a:focus,
 .intro h1 {
   font-family: "Raleway", sans-serif;
   color: #fff;
-  font-size: 82px;
+  font-size: 60px;
   font-weight: 700;
-  text-transform: uppercase;
+  /* text-transform: uppercase; */
   margin-top: 0;
   margin-bottom: 10px;
 }
 .intro h1 span {
-  font-weight: 800;
+  font-weight: 600;
   color: #5ca9fb;
 }
 .intro p {
