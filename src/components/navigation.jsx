@@ -22,7 +22,7 @@ export const Navigation = (props) => {
           </a>{" "} */}
           <a href="#page-top">
             {/* TODO: change the logo into the real one */}
-            <img src="./img/logo/logo5.jpg" alt="" style={{width: 200, position:"absolute", borderEndEndRadius: 100, borderBottomLeftRadius: 100, top: -30}} />
+            <img src="./img/logo/logo14.jpg" alt="" style={{width: 200, position:"absolute", borderEndEndRadius: 100, borderBottomLeftRadius: 100, top: -30}} />
           </a>
         </div>
 

@@ -208,8 +208,10 @@ a:focus,
   display: table;
   width: 100%;
   padding: 0;
-  background: url(../img/pic1.jpg) center center no-repeat;
-  background-color: #e5e5e5;
+  margin-top: 75;
+  background: url(../img/pic1.jpg) center center no-repeat rgba(255, 255, 255, 0.2);;
+  background-blend-mode: overlay;
+  /* background-color: #e5e5e5; */
   -webkit-background-size: cover;
   -moz-background-size: cover;
   background-size: cover;
@@ -224,12 +226,12 @@ a:focus,
   font-size: 60px;
   font-weight: 700;
   /* text-transform: uppercase; */
-  margin-top: 0;
+  margin-top: -100;
   margin-bottom: 10px;
 }
 .intro h1 span {
   font-weight: 600;
-  color: #5ca9fb;
+  color: #4fadec;
 }
 .intro p {
   color: #fff;
