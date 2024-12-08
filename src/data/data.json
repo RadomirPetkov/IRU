@@ -161,24 +161,24 @@
   },
   "Features": [
     {
-      "icon": "fa fa-comments-o",
-      "title": "Lorem ipsum",
-      "text": "Lorem ipsum dolor sit amet placerat facilisis felis mi in tempus eleifend pellentesque natoque etiam."
+      "icon": "fa fa-solid fa-book",
+      "title": "Качествено обучение",
+      "text": "Обучение, фокусирано върху практически умения, персонализиран подход и проверени методи на преподаване, гарантиращи максимални резултати за участниците."
     },
     {
-      "icon": "fa fa-bullhorn",
-      "title": "Lorem ipsum",
-      "text": "Lorem ipsum dolor sit amet placerat facilisis felis mi in tempus eleifend pellentesque natoque etiam."
+      "icon": "fa fa-certificate",
+      "title": "Сертификати за завършване",
+      "text": "Получете официален сертификат след успешното преминаване на всеки един от нашите курсове."
     },
     {
       "icon": "fa fa-group",
-      "title": "Lorem ipsum",
-      "text": "Lorem ipsum dolor sit amet placerat facilisis felis mi in tempus eleifend pellentesque natoque etiam."
+      "title": "Достъп до експерти",
+      "text": "Имате възможност за пряк контакт с лектори, притежаващи дългогодишен опит, които са готови да отговорят на вашите въпроси и да ви насочат."
     },
     {
       "icon": "fa fa-magic",
-      "title": "Lorem ipsum",
-      "text": "Lorem ipsum dolor sit amet placerat facilisis felis mi in tempus eleifend pellentesque natoque etiam."
+      "title": "Записи от занятията",
+      "text": "Получавате достъп до записите на лекциите след приключването на занятията, за да ги прегледате отново и да затвърдите знанията си."
     }
   ]
 }
