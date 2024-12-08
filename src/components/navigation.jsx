@@ -17,9 +17,13 @@ export const Navigation = (props) => {
             <span className="icon-bar"></span>{" "}
             <span className="icon-bar"></span>{" "}
           </button>
-          <a className="navbar-brand page-scroll" href="#page-top">
+          {/* <a className="navbar-brand page-scroll" href="#page-top">
             ИРУ
-          </a>{" "}
+          </a>{" "} */}
+          <a href="#page-top">
+            {/* TODO: change the logo into the real one */}
+            <img src="./img/logo/1600w-JmYWTjUsE-Q.webp" alt="" style={{width: 100}} />
+          </a>
         </div>
 
         <div
