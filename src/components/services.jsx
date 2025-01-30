@@ -1,7 +1,16 @@
 import React from "react";
-import { ListItem, List, ListItemText, Accordion, AccordionSummary, AccordionDetails, ListItemIcon } from "@mui/material";
-import { ArrowRightRounded, ExpandMoreOutlined } from "@mui/icons-material";
-import DoneIcon from '@mui/icons-material/Done';
+import {
+  ListItem,
+  List,
+  ListItemText,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  ListItemIcon,
+  Link,
+} from "@mui/material";
+import { ArrowRight, ExpandMoreOutlined } from "@mui/icons-material";
+import DoneIcon from "@mui/icons-material/Done";
 
 export const Services = (props) => {
   return (
@@ -11,56 +20,161 @@ export const Services = (props) => {
           <h2>Отворени курсове:</h2>
 
           <p>
-            Lorem ipsum, dolor sit amet consectetur adipisicing elit. Deleniti saepe maiores dolorem nobis doloribus quos ipsa sint voluptatum, illum perspiciatis iure placeat cupiditate nemo non eveniet atque magnam, odio, est expedita iusto rem id repellendus deserunt qui. Facere reiciendis vitae harum ipsum, repellat eaque earum dignissimos reprehenderit voluptatum impedit mollitia.
-          </p>
-
-          <p>
-            Lorem ipsum, dolor sit amet consectetur adipisicing elit. Deleniti saepe maiores dolorem nobis doloribus quos ipsa sint voluptatum, illum perspiciatis iure placeat cupiditate nemo non eveniet atque magnam, odio, est expedita iusto rem id repellendus deserunt qui. Facere reiciendis vitae harum ipsum, repellat eaque earum dignissimos reprehenderit voluptatum impedit mollitia.
+            Ние провеждаме безплатни и изцяло дистанционни курсове за цифрови
+            компетентности, които се провеждат в делнични дни между 18:00 и
+            21:00 ч. Обученията са предназначени за всички хора, които искат да
+            подобрят своите дигитални умения – от работа с компютър и интернет
+            до използване на офис приложения и защита на личните данни.
+            Курсовете са практични и достъпни за всички, независимо от нивото на
+            познания. Обучението се води от опитни специалисти и е съобразено с
+            нуждите на съвременния дигитален свят. Повече информация за
+            курсовете и как да кандидатствате може да откриете по-долу.
           </p>
           {props.data
             ? props.data.map((data) => (
-              <Accordion style={{ marginTop: 10, borderRadius: 50 }}>
-                <AccordionSummary
-                  expandIcon={<ExpandMoreOutlined fontSize="large" />}
-                >
-                  <h4>{data.name}</h4>
-                </AccordionSummary>
+                <Accordion style={{ marginTop: 50, borderRadius: 50 }}>
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreOutlined fontSize="large" />}
+                  >
+                    <h4 style={{ width: "100%" }}>{data.name}</h4>
+                  </AccordionSummary>
 
-                <AccordionDetails>
-                  <h3 style={{color: "black"}}>Какво ще научите</h3>
-                  <List>
-                    <ListItem>
-                      <ListItemIcon>
-                        <DoneIcon fontSize="large"></DoneIcon>
-                      </ListItemIcon>
-                      <ListItemText>
-                        Нови умения
-                      </ListItemText>
-                    </ListItem>
+                  <AccordionDetails>
+                    <List>
+                      <Accordion
+                        style={{
+                          background: "#f0faeb",
+                          borderRadius: 80,
+                          boxShadow: "0px 0px 4px 1.5px rgba(0,0,0,0.75)",
+                        }}
+                      >
+                        <AccordionSummary
+                          expandIcon={<ExpandMoreOutlined fontSize="large" />}
+                        >
+                          <h4 style={{ width: "100%" }}>Какво ще научите</h4>
+                        </AccordionSummary>
 
-                    <ListItem>
-                      <ListItemIcon>
-                        <DoneIcon fontSize="large"></DoneIcon>
-                      </ListItemIcon>
-                      <ListItemText>
-                        Нови компетенции
-                      </ListItemText>
-                    </ListItem>
+                        <AccordionDetails>
+                          {data.learning &&
+                            data.learning.map((element) => (
+                              <ListItem key={element}>
+                                <ListItemIcon>
+                                  <DoneIcon fontSize="large"></DoneIcon>
+                                </ListItemIcon>
+                                <ListItemText>
+                                  <span style={{ fontSize: "17px" }}>
+                                    {element}
+                                  </span>
+                                </ListItemText>
+                              </ListItem>
+                            ))}
+                        </AccordionDetails>
+                      </Accordion>
 
-                    <ListItem>
-                      <ListItemIcon>
-                        <DoneIcon fontSize="large"></DoneIcon>
-                      </ListItemIcon>
-                      <ListItemText>
-                        Сертификат
-                      </ListItemText>
-                    </ListItem>
-                  </List>
-                </AccordionDetails>
-              </Accordion>
-            ))
-            : 'loading'}
+                      <Accordion
+                        style={{
+                          background: "#f0faeb",
+                          borderRadius: 80,
+                          boxShadow: "0px 0px 4px 1.5px rgba(0,0,0,0.75)",
+                          margin: "10 0",
+                        }}
+                      >
+                        <AccordionSummary
+                          expandIcon={<ExpandMoreOutlined fontSize="large" />}
+                        >
+                          <h4 style={{ width: "100%" }}>
+                            На какви условия трябва да отговаряте
+                          </h4>
+                        </AccordionSummary>
 
+                        <AccordionDetails>
+                          {data.conditions &&
+                            data.conditions.map((element) => (
+                              <ListItem key={element}>
+                                <ListItemIcon>
+                                  <DoneIcon fontSize="large"></DoneIcon>
+                                </ListItemIcon>
+                                <ListItemText>
+                                  <span style={{ fontSize: "17px" }}>
+                                    {element}
+                                  </span>
+                                </ListItemText>
+                              </ListItem>
+                            ))}
+                        </AccordionDetails>
+                      </Accordion>
+
+                      <Accordion
+                        style={{
+                          background: "#f0faeb",
+                          borderRadius: 80,
+                          boxShadow: "0px 0px 4px 1.5px rgba(0,0,0,0.75)",
+                          margin: "10 0",
+                        }}
+                      >
+                        <AccordionSummary
+                          expandIcon={<ExpandMoreOutlined fontSize="large" />}
+                        >
+                          <h4 style={{ width: "100%" }}>
+                            Как да кандидатствате
+                          </h4>
+                        </AccordionSummary>
+
+                        <AccordionDetails>
+                          {data.signup &&
+                            data.signup.map((element, i) => (
+                              <ListItem key={element}>
+                                <ListItemIcon>
+                                  {i <= 1 ? (
+                                    <DoneIcon fontSize="large"></DoneIcon>
+                                  ) : (
+                                    <ArrowRight fontSize="large"></ArrowRight>
+                                  )}
+                                </ListItemIcon>
+                                <ListItemText>
+                                  <span style={{ fontSize: "17px" }}>
+                                    {i <= 1 ? (
+                                      element
+                                    ) : (
+                                      <div>
+                                        <span>
+                                          <b>{element[0]}</b>
+                                        </span>
+                                        <span
+                                          style={{
+                                            textDecoration: "underline",
+                                          }}
+                                        >
+                                          {element[1]}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {i == 0 && (
+                                      <Link
+                                        style={{
+                                          fontSize: "15px",
+                                          marginLeft: 5,
+                                        }}
+                                      >
+                                        <a
+                                          href="https://serviceseprocess.az.government.bg/service/5aedf067-45f5-4a56-9fe7-ca42f9084cc8/description"
+                                          target="_blank"
+                                        >
+                                          ТУК
+                                        </a>
+                                      </Link>
+                                    )}
+                                  </span>
+                                </ListItemText>
+                              </ListItem>
+                            ))}
+                        </AccordionDetails>
+                      </Accordion>
+                    </List>
+                  </AccordionDetails>
+                </Accordion>
+              ))
+            : "loading"}
         </div>
         <div className="row">
           {/* {props.data
