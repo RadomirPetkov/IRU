@@ -4,6 +4,7 @@ export const Header = (props) => {
   return (
     <header id="header">
       <div className="intro">
+        <img src="../img/pic2.jpg" className="intro-bg" alt="" />
         <div className="overlay">
           <div className="container">
             <div className="row">
