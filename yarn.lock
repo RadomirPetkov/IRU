@@ -6584,6 +6584,11 @@
   dependencies:
     "yallist" "^4.0.0"
 
+"lucide-react@^0.476.0":
+  "integrity" "sha512-x6cLTk8gahdUPje0hSgLN1/MgiJH+Xl90Xoxy9bkPAsMPOUiyRSKR4JCDPGVCEpyqnZXH3exFWNItcvra9WzUQ=="
+  "resolved" "https://registry.npmjs.org/lucide-react/-/lucide-react-0.476.0.tgz"
+  "version" "0.476.0"
+
 "magic-string@^0.25.0", "magic-string@^0.25.7":
   "integrity" "sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ=="
   "resolved" "https://registry.npmjs.org/magic-string/-/magic-string-0.25.9.tgz"
@@ -8019,7 +8024,7 @@
     "loose-envify" "^1.4.0"
     "prop-types" "^15.6.2"
 
-"react@*", "react@^17.0.0 || ^18.0.0 || ^19.0.0", "react@^17.0.1", "react@>= 16", "react@>= 16.8.0", "react@>=16.3", "react@>=16.6.0", "react@>=16.8.0", "react@17.0.1":
+"react@*", "react@^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^17.0.0 || ^18.0.0 || ^19.0.0", "react@^17.0.1", "react@>= 16", "react@>= 16.8.0", "react@>=16.3", "react@>=16.6.0", "react@>=16.8.0", "react@17.0.1":
   "integrity" "sha512-lG9c9UuMHdcAexXtigOZLX8exLWkW0Ku29qPRU8uhF2R9BN96dLCt0psvzPLlHc5OWkgymP3qwTRgbnw5BKx3w=="
   "resolved" "https://registry.npmjs.org/react/-/react-17.0.1.tgz"
   "version" "17.0.1"
