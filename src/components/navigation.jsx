@@ -22,7 +22,11 @@ export const Navigation = (props) => {
           </a>{" "} */}
           <a href="#page-top">
             {/* TODO: change the logo into the real one */}
-            <img src="./img/logo/logo14.jpg" alt="" style={{width: 200, position:"absolute", borderEndEndRadius: 100, borderBottomLeftRadius: 100, top: -30}} />
+            <img
+              src="./img/logo/logo14.jpg"
+              alt=""
+              className="w-[100px] absolute top-0 rounded-full sm:w-[150px] sm:top-[-40px] md:w-[200px]"
+            />
           </a>
         </div>
 
@@ -47,23 +51,13 @@ export const Navigation = (props) => {
               </a>
             </li>
             <li>
-              <a href="#portfolio" className="page-scroll">
-                Gallery
-              </a>
-            </li>
-            <li>
-              <a href="#testimonials" className="page-scroll">
-                Testimonials
-              </a>
-            </li>
-            <li>
               <a href="#team" className="page-scroll">
-                Team
+                Нашият екип
               </a>
             </li>
             <li>
               <a href="#contact" className="page-scroll">
-                Contact
+                Контакти
               </a>
             </li>
           </ul>

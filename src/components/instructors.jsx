@@ -13,7 +13,7 @@ import {
 
 const InstructorsOverview = () => {
   return (
-    <div className="bg-gray-50 py-16 m-auto">
+    <div id='team' className="bg-gray-50 py-16 m-auto">
       <div className="max-w-[1500px] px-4 m-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-4">НАШИТЕ ПРЕПОДАВАТЕЛИ</h2>
