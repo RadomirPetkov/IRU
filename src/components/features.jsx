@@ -22,7 +22,7 @@ export const Features = (props) => {
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 relative inline-block">
             Какво предлагаме
-            <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+            <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-700 to-purple-600"></div>
           </h2>
         </div>
         
@@ -34,7 +34,7 @@ export const Features = (props) => {
                   className="bg-white rounded-lg shadow-lg p-6 text-center transition-all duration-300 hover:shadow-xl"
                 >
                   <div className="mb-4 flex justify-center">
-                    <div className="w-28 h-28 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                    <div className="w-28 h-28 bg-gradient-to-r from-purple-600 to-blue-700 rounded-full flex items-center justify-center text-white">
                       {getIcon(d.title, i)}
                     </div>
                   </div>

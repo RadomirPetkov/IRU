@@ -36,8 +36,8 @@ export const Contact = (props) => {
   };
   return (
     <div>
-      <div id="contact">
-        <div className="container">
+      <div id="contact" className="bg-gradient-to-r from-purple-600 to-blue-700">
+        <div className="container ">
           <div className="col-md-8">
             <div className="row">
               <div className="section-title">

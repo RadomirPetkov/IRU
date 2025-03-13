@@ -18,13 +18,13 @@ export const Services = (props) => {
   };
 
   return (
-    <div id="services" className="py-16 bg-gradient-to-b from-gray-50 to-white">
+    <div id="" className="py-16 bg-gradient-to-r from-purple-600 to-blue-700">
       <div className="container mx-auto px-4 max-w-[1500px]">
         <div className="mb-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6 relative inline-block">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 relative inline-block">
               Отворени курсове
-              <div className="absolute -bottom-3 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+              <div className="absolute -bottom-3 left-0 w-full h-1 bg-white"></div>
             </h2>
           </div>
           
