@@ -1,5 +1,5 @@
 import React from "react";
-import { Laptop, Book, Award, Users, BarChart, GraduationCap, Briefcase, Clock } from "lucide-react";
+import { Laptop, BookOpenCheck, Squirrel, Users, ArchiveRestore, GraduationCap, Briefcase, Clock } from "lucide-react";
 
 export const Features = (props) => {
   // Функция, която връща подходяща икона според заглавието или индекса
@@ -7,9 +7,9 @@ export const Features = (props) => {
     // Можете да добавите логика за избор на икона според заглавието
     const icons = [
       <Laptop size={24} strokeWidth={2} />,
-      <GraduationCap size={24} strokeWidth={2} />,
-      <Award size={24} strokeWidth={2} />,
-      <Users size={24} strokeWidth={2} />
+      <BookOpenCheck size={24} strokeWidth={2} />,
+      <Users size={24} strokeWidth={2} />,
+      <ArchiveRestore size={24} strokeWidth={2} />
     ];
     
     // Връща икона според индекса или първата икона, ако индексът е невалиден
