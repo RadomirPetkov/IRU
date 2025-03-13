@@ -18,11 +18,12 @@ export const Services = (props) => {
   };
 
   return (
-    <div id="" className="py-16 bg-gradient-to-r from-purple-600 to-blue-700">
+    <div  className="py-16 bg-gradient-to-r from-purple-600 to-blue-700">
       <div className="container mx-auto px-4 max-w-[1500px]">
         <div className="mb-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 relative inline-block">
+          <div className="text-center mb-12 relative">
+            <div className="absolute top-[-100] left-0" id="courses"></div>
+            <h2  className="text-4xl md:text-5xl font-bold text-white mb-6 relative inline-block">
               Отворени курсове
               <div className="absolute -bottom-3 left-0 w-full h-1 bg-white"></div>
             </h2>
