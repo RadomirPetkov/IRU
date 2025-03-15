@@ -38,7 +38,7 @@ export const Features = (props) => {
                       {getIcon(d.title, i)}
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">{d.title}</h3>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">{d.title}</h3>
                   <p className="text-gray-600">{d.text}</p>
                 </div>
               ))

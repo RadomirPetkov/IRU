@@ -89,13 +89,13 @@ hr {
 }
 #menu.navbar-default .navbar-nav > li > a {
   /* font-family: "Lato", sans-serif; */
-  text-transform: uppercase;
+  /* text-transform: uppercase;
   color: #555;
   font-size: 15px;
   font-weight: 400;
   padding: 8px 2px;
   border-radius: 0;
-  margin: 9px 20px 0;
+  margin: 9px 20px 0; */
 }
 #menu.navbar-default .navbar-nav > li > a:after {
   display: block;
@@ -245,14 +245,16 @@ a:focus,
   /* font-size: 2vw; */
   font-weight: 700;
   /* text-transform: uppercase; */
+  max-width: 600;
   margin-top: -100;
+  margin-left: 60;
   margin-bottom: 10px;
 }
 
 
 .intro h1 span {
   font-weight: 600;
-  color: #4fadec;
+  color: #fff;
 }
 .intro p {
   color: #fff;
@@ -265,7 +267,7 @@ a:focus,
 header .intro-text {
   width: 50%;
   margin: 0;
-  padding-top: 350px;
+  /* padding-top: 350px; */
   padding-bottom: 200px;
   text-align: center;
 }
@@ -301,9 +303,9 @@ header .intro-text {
 #about h2::after {
   position: absolute;
   content: "";
-  background: linear-gradient(to right, #5ca9fb 0%, #6372ff 100%);
-  height: 4px;
-  width: 60px;
+  background: linear-gradient(to right, oklch(0.546 0.245 262.881) 0%, oklch(0.438 0.218 303.724) 100%);
+  height: 3px;
+  width: 100px;
   bottom: 0;
   left: 0;
 }
@@ -316,7 +318,7 @@ header .intro-text {
 #about .about-text li:before {
   content: "\f00c";
   /* font-family: "FontAwesome"; */
-  color: #5ca9fb;
+  /* color: #5ca9fb; */
   font-size: 11px;
   font-weight: 300;
   padding-right: 8px;
