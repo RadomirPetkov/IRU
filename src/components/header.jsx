@@ -57,7 +57,7 @@ export const Header = (props) => {
                 transition: "font-size 0.2s ease"
               }}
             >
-              Бъдете част от технологичното бъдеще
+              Станете част от технологичното бъдеще!
             </h1>
           </div>
           
@@ -65,8 +65,8 @@ export const Header = (props) => {
           <div className={`${isMobile ? "mt-4" : "mt-6 pl-8"}`}>
             <a
               href="#features"
-              className={`inline-block bg-blue-600 hover:bg-blue-700 py-4 px-8 rounded-full text-white 
-                font-semibold transition-all duration-300 transform hover:scale-105
+              className={`inline-block bg-blue-600 py-4 px-8 rounded-full text-white 
+                font-semibold transition-all duration-300 transform hover:scale-105 hover:text-white
                 ${isMobile ? "text-xl py-3 px-6" : isTablet ? "text-2xl" : "text-3xl py-5 px-8"}`
               }
             >

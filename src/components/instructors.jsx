@@ -29,9 +29,9 @@ const InstructorsOverview = () => {
             <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
               <GraduationCap className="text-white" size={40} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Висока квалификация</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-3">Висока квалификация</h3>
             <p className="text-gray-600">
-              Притежават професорски степени в престижни учебни заведения
+              Притежават професорски степени в престижни учебни заведения.
             </p>
           </div>
           
@@ -39,7 +39,7 @@ const InstructorsOverview = () => {
             <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
               <Atom className="text-white" size={40} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Адаптивни методи на преподаване</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-3">Адаптивни методи на преподаване</h3>
             <p className="text-gray-600">
             Гъвкави подходи, съобразени с нивото и темпото на курсистите.
             </p>
@@ -49,9 +49,9 @@ const InstructorsOverview = () => {
             <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lightbulb className="text-white" size={40} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Експертни лектори</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-3">Експертни лектори</h3>
             <p className="text-gray-600">
-            Преподаватели с участие в конференции, семинари и форуми за нови технологии
+            Преподаватели с участие в конференции, семинари и форуми за нови технологии.
             </p>
           </div>
           
@@ -59,15 +59,15 @@ const InstructorsOverview = () => {
             <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-700 rounded-full flex items-center justify-center mx-auto mb-4">
               <LaptopMinimal className="text-white" size={40} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Иновативен подход</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-3">Иновативен подход</h3>
             <p className="text-gray-600">
-              Съвременни методи на преподаване, съчетаващи теоретични знания с практически упражнения и решаване на реални казуси
+              Съвременни методи на преподаване, съчетаващи теоретични знания с практически упражнения и решаване на реални казуси.
             </p>
           </div>
         </div>
 
         
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 border-l-4 border-blue-500 mt-12">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 border-l-4 border-blue-500 mt-12 drop-shadow-[0_0px_10px_rgba(0,0,0,0.25)]">
       <div className="flex flex-col md:flex-row items-start md:items-center mb-6">
         <div className="bg-gradient-to-r from-purple-600 to-blue-700 rounded-full p-3 mr-4 mb-4 md:mb-0">
           <Clock className="text-white" size={28} />

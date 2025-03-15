@@ -43,8 +43,8 @@ export const Contact = (props) => {
               <div className="section-title">
                 <h2>Свържете се с нас</h2>
                 <p>
-                  Моля попълнете формата по-долу, за да ни изпратите емейл и ние
-                  ще се свържем с Вас възможно най-скоро
+                  Моля, попълнете формата по-долу, за да ни изпратите емейл и ние
+                  ще се свържем с Вас възможно най-скоро!
                 </p>
               </div>
               <form name="sentMessage" validate onSubmit={handleSubmit}>
@@ -107,7 +107,7 @@ export const Contact = (props) => {
           </div>
           <div className="col-md-3 col-md-offset-1 contact-info">
             <div className="contact-item">
-              <h3>Контакти</h3>
+              <h3 className="text-3xl">Контакти:</h3>
               <p>
                 <span>
                   <i className="fa fa-map-marker"></i> Адрес

@@ -20,19 +20,31 @@ export const About = (props) => {
               <h3>Защо да изберете нас?</h3>
               <div className="list-style">
                 <div className="col-lg-6 col-sm-6 col-xs-12">
-                  <ul>
+                  <ul className="space-y-3 list-none">
                     {props.data
                       ? props.data.Why.map((d, i) => (
-                          <li key={`${d}-${i}`}>{d}</li>
+                          <li
+                            className="flex items-start pl-2"
+                            key={`${d}-${i}`}
+                          >
+                            <div className="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full mr-3"></div>
+                            <span className="text-gray-700">{d}</span>
+                          </li>
                         ))
                       : "loading"}
                   </ul>
                 </div>
                 <div className="col-lg-6 col-sm-6 col-xs-12">
-                  <ul>
+                  <ul className="space-y-3 list-none">
                     {props.data
                       ? props.data.Why2.map((d, i) => (
-                          <li key={`${d}-${i}`}> {d}</li>
+                          <li
+                            className="flex items-start pl-2"
+                            key={`${d}-${i}`}
+                          >
+                            <div className="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full mr-3"></div>
+                            <span className="text-gray-700">{d}</span>
+                          </li>
                         ))
                       : "loading"}
                   </ul>
