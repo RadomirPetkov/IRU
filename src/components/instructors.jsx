@@ -17,7 +17,7 @@ const InstructorsOverview = () => {
       <div className="max-w-[1500px] px-4 m-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-4">НАШИТЕ ПРЕПОДАВАТЕЛИ</h2>
-          <div className="w-24 h-1 bg-blue-500 mx-auto mb-8"></div>
+          <div className="w-96 h-1 bg-gradient-to-r from-purple-600 to-blue-700 mx-auto mb-8"></div>
           <p className="text-gray-600 max-w-6xl mx-auto">
             Експертен екип от професионалисти с богат опит в сферата на цифровите технологии, 
             които ще ви помогнат да развиете вашите цифрови компетентности
@@ -95,7 +95,7 @@ const InstructorsOverview = () => {
           <div>
             <h4 className="font-semibold text-gray-800 mb-2">Практически опит</h4>
             <p className="text-gray-700">
-              Благодарение на дългогодишния си опит, ще получите не само теоретични знания, но и практически умения, директно приложими във вашата работа.
+              Благодарение на дългогодишния им опит, ще получите не само теоретични знания, но и практически умения, директно приложими във вашата работа.
             </p>
           </div>
         </div>

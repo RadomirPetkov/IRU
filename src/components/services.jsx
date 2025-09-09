@@ -46,7 +46,6 @@ export const Services = (props) => {
                 <div className="md:w-3/5">
                   <h3 className="text-4xl text-gray-800 mb-8 relative">
                     За нашите курсове
-                    <div className="absolute -bottom-2 left-0 w-[250px] h-1 bg-gradient-to-r from-blue-700 to-purple-600"></div>
                   </h3>
 
                   <p className="text-gray-600 mb-4">

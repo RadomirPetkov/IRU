@@ -1,5 +1,12 @@
 {
   "hosting": {
+    "redirects": [
+      {
+        "source": "/**",
+        "destination": "https://iru.bg/:1",
+        "type": 301
+      }
+    ],
     "public": "build",
     "ignore": [
       "firebase.json",

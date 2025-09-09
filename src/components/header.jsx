@@ -14,7 +14,7 @@ export const Header = (props) => {
       
       // Динамично изчисляване на размера на шрифта
       // Ограничаваме минималния размер до 1.75rem (28px) и максималния до 4.5rem (72px)
-      const calculatedSize = Math.max(1.75, Math.min(windowWidth * 0.00003 * 100, 4.5));
+      const calculatedSize = Math.max(1.75, Math.min(windowWidth * 0.00006 * 100, 4.5));
       setFontSize(`${calculatedSize}rem`);
     };
     
@@ -32,7 +32,7 @@ export const Header = (props) => {
     <header className="mt-[80px] h-[calc(100vh-80px)] relative overflow-hidden">
       {/* Изображение с правилно оразмеряване */}
       <img
-        src={isMobile ? "../img/main_mobile.jpg" : "../img/main.jpg"}
+        src={isMobile ? "../img/main_mobile.png" : "../img/main.png"}
         className={`absolute h-full w-full object-cover ${isMobile ? "" : "lg:object-cover"}`}
         alt="Заглавно изображение"
       />
@@ -57,7 +57,7 @@ export const Header = (props) => {
                 transition: "font-size 0.2s ease"
               }}
             >
-              Станете част от технологичното бъдеще!
+              Станете част от технологичното бъдеще
             </h1>
           </div>
           
