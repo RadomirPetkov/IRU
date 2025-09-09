@@ -1,6 +1,12 @@
-// src/contexts/AuthContext.jsx
+// src/contexts/AuthContext.jsx - Обновен с Firebase Firestore
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChange } from '../firebaseAuth';
+import { 
+  initializeUser, 
+  getFullUserProfile, 
+  logoutUser as logoutUserService,
+  hasAccessToCourse as checkCourseAccess
+} from '../services/userService';
 
 const AuthContext = createContext();
 
@@ -14,21 +20,120 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(false);
 
+  // Инициализация на потребител при влизане
+  const initUser = async (firebaseUser) => {
+    if (!firebaseUser) return;
+    
+    setInitializing(true);
+    try {
+      // Инициализираме потребителя във Firestore
+      await initializeUser(firebaseUser.email);
+      
+      // Получаваме пълния профил
+      const profileResult = await getFullUserProfile(firebaseUser.email);
+      
+      if (profileResult.success) {
+        setUserProfile(profileResult.data);
+        console.log('✅ Потребителски профил зареден:', firebaseUser.email);
+      } else {
+        console.error('❌ Грешка при зареждане на профил:', profileResult.error);
+      }
+    } catch (error) {
+      console.error('❌ Грешка при инициализация на потребител:', error);
+    } finally {
+      setInitializing(false);
+    }
+  };
+
+  // Функция за излизане
+  const logout = async () => {
+    if (user?.email) {
+      await logoutUserService(user.email);
+    }
+    setUser(null);
+    setUserProfile(null);
+  };
+
+  // Проследяване на Firebase Auth състоянието
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChange(async (firebaseUser) => {
+      setUser(firebaseUser);
+      
+      if (firebaseUser) {
+        await initUser(firebaseUser);
+      } else {
+        setUserProfile(null);
+      }
+      
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
+  // Функция за обновяване на профила
+  const refreshProfile = async () => {
+    if (!user?.email) return;
+    
+    try {
+      const profileResult = await getFullUserProfile(user.email);
+      if (profileResult.success) {
+        setUserProfile(profileResult.data);
+      }
+    } catch (error) {
+      console.error('❌ Грешка при обновяване на профил:', error);
+    }
+  };
+
+  // Проверка за достъп до курс
+  const hasAccessToCourse = (courseId) => {
+    if (!userProfile) return false;
+    return checkCourseAccess(userProfile, courseId);
+  };
+
+  // Проверка за права
+  const hasPermission = (permission) => {
+    if (!userProfile || !userProfile.roleInfo) return false;
+    return userProfile.roleInfo.permissions.includes(permission);
+  };
+
+  // Получаване на роля
+  const getUserRole = () => {
+    return userProfile?.role || 'guest';
+  };
+
+  // Получаване на display name
+  const getDisplayName = () => {
+    return userProfile?.displayName || user?.email?.split('@')[0] || 'Потребител';
+  };
+
   const value = {
+    // Състояние
     user,
-    loading,
-    isAuthenticated: !!user
+    userProfile,
+    loading: loading || initializing,
+    isAuthenticated: !!user,
+    
+    // Функции
+    logout,
+    refreshProfile,
+    hasAccessToCourse,
+    hasPermission,
+    getUserRole,
+    getDisplayName,
+    
+    // Данни за потребителя
+    email: user?.email,
+    displayName: getDisplayName(),
+    role: getUserRole(),
+    roleInfo: userProfile?.roleInfo,
+    permissions: userProfile?.permissions,
+    joinDate: userProfile?.joinDate,
+    lastLogin: userProfile?.lastLogin
   };
 
   return (

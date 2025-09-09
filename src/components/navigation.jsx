@@ -77,8 +77,8 @@ export const Navigation = (props) => {
                     </a>
                   </li>
                   <li>
-                    <Link to="/videos" className="page-scroll">
-                      Видеа
+                    <Link to="/courses" className="page-scroll">
+                      Обучения
                       {!isAuthenticated && (
                         <span className="ml-1 text-xs bg-yellow-500 text-white px-2 py-1 rounded-full">
                           🔒
@@ -117,10 +117,14 @@ export const Navigation = (props) => {
                   </li>
                   <li>
                     <Link 
-                      to="/videos" 
-                      className={`page-scroll ${location.pathname === '/videos' ? 'text-blue-600 font-semibold' : ''}`}
+                      to="/courses" 
+                      className={`page-scroll ${
+                        location.pathname === '/courses' || location.pathname.startsWith('/course/') 
+                          ? 'text-blue-600 font-semibold' 
+                          : ''
+                      }`}
                     >
-                      Видеа
+                      Обучения
                       {!isAuthenticated && (
                         <span className="ml-1 text-xs bg-yellow-500 text-white px-2 py-1 rounded-full">
                           🔒
