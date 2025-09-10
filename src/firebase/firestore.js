@@ -1,11 +1,11 @@
-// src/firebase/firestore.js
+// src/firebase/firestore.js - Напълно поправен файл
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, 
   doc, 
   getDoc, 
   setDoc, 
-  updateDoc, 
+  updateDoc,
   collection, 
   query, 
   where, 
@@ -32,49 +32,6 @@ const firebaseConfig = {
 // Инициализиране на Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-
-// Структура на потребителските данни във Firestore
-/*
-users/{userEmail}/
-  - profile: {
-      email: string
-      displayName: string
-      role: string
-      joinDate: timestamp
-      lastLogin: timestamp
-      isActive: boolean
-    }
-  - permissions: {
-      courses: array of courseIds
-      customPermissions: array of strings
-    }
-  - progress/
-    - courses/{courseId}: {
-        enrolledAt: timestamp
-        completedAt: timestamp (null if not completed)
-        completedVideos: array of videoIds
-        totalVideos: number
-        progressPercentage: number
-        lastAccessedAt: timestamp
-      }
-    - videos/{videoId}: {
-        courseId: string
-        videoId: string
-        watchedAt: timestamp
-        completedAt: timestamp (null if not completed)
-        watchCount: number
-        totalWatchTime: number (seconds)
-        isCompleted: boolean
-      }
-  - activity/
-    - sessions/{sessionId}: {
-        loginAt: timestamp
-        logoutAt: timestamp
-        duration: number (minutes)
-        videosWatched: array of videoIds
-        coursesAccessed: array of courseIds
-      }
-*/
 
 // ============= ПОТРЕБИТЕЛСКИ ПРОФИЛИ =============
 

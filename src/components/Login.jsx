@@ -1,7 +1,8 @@
-// src/components/Login.jsx - Без демо акаунти
+// src/components/Login.jsx - Обновен с демо акаунти
 import React, { useState } from 'react';
 import { loginUser } from '../firebaseAuth';
-import { Eye, EyeOff, Lock, Mail, LogIn, X } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, LogIn, X, Zap } from 'lucide-react';
+import DemoAccounts from './DemoAccounts';
 
 const Login = ({ onClose, onLoginSuccess }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const Login = ({ onClose, onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDemo, setShowDemo] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -37,6 +39,43 @@ const Login = ({ onClose, onLoginSuccess }) => {
     
     setLoading(false);
   };
+
+  const handleDemoLoginSuccess = (user) => {
+    onLoginSuccess && onLoginSuccess(user);
+    onClose && onClose();
+  };
+
+  if (showDemo) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-700 rounded-full p-2 mr-3">
+                <Zap className="text-white" size={24} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Демо акаунти</h2>
+            </div>
+            <button
+              onClick={() => setShowDemo(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Demo Accounts */}
+          <div className="p-6">
+            <DemoAccounts
+              onLoginSuccess={handleDemoLoginSuccess}
+              onClose={() => setShowDemo(false)}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -136,6 +175,20 @@ const Login = ({ onClose, onLoginSuccess }) => {
               )}
             </button>
           </form>
+
+          {/* Demo Section */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => setShowDemo(true)}
+              className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105"
+            >
+              <Zap size={20} />
+              <span className="font-medium">Опитай демо акаунтите</span>
+            </button>
+            <p className="text-center text-xs text-gray-500 mt-2">
+              Бърз достъп с готови акаунти за тестване
+            </p>
+          </div>
 
           {/* Help Text */}
           <div className="mt-6 pt-6 border-t border-gray-200 text-center">

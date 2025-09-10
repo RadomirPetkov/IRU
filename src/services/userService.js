@@ -1,4 +1,4 @@
-// src/services/userService.js - Поправен с всички функции
+// src/services/userService.js - С автоматично създаване в Authentication
 import {
     getUserProfile,
     createUserProfile,
@@ -15,6 +15,9 @@ import {
     getActivityStats,
     getAllUsers
   } from '../firebase/firestore';
+  
+  // Добавяме Firebase Auth функции
+  import { createUser } from '../firebaseAuth';
   
   // Роли и техните права
   export const ROLES = {
@@ -50,8 +53,170 @@ import {
       defaultCourses: []
     }
   };
+
+  // ============= ФУНКЦИЯ ЗА СЪЗДАВАНЕ НА ПОТРЕБИТЕЛ И В AUTH И ВЪВ FIRESTORE =============
   
-  // ============= ОСНОВНИ ФУНКЦИИ ЗА ПОТРЕБИТЕЛИ =============
+  /**
+   * Създаване на нов потребител в Authentication + Firestore
+   */
+ export const createNewUser = async (email, password, userData = {}) => {
+  try {
+    // Валидация на параметрите
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return { success: false, error: 'Email и парола трябва да са string' };
+    }
+    
+    console.log(`🔐 Създаване на нов потребител: ${email}`);
+    console.log(`📝 Парола тип: ${typeof password}, дължина: ${password.length}`);
+    
+    // 1. Първо създаваме акаунта в Firebase Authentication
+    const authResult = await createUser(email, password);
+    
+    // ... останалия код
+  } catch (error) {
+    console.error('❌ Общ грешка при създаване на потребител:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+  // ============= СЪЗДАВАНЕ НА ДЕМО ПОТРЕБИТЕЛИ С АВТЕНТИФИКАЦИЯ =============
+  
+  /**
+   * Създаване на демо потребители в Authentication + Firestore
+   */
+  export const createDemoUsersWithAuth = async () => {
+    const demoUsers = [
+      {
+        email: 'admin@iru.bg',
+        password: 'admin123',
+        displayName: 'Администратор',
+        role: ROLES.ADMIN,
+        courses: ['basic', 'intermediate', 'advanced', 'expert']
+      },
+      {
+        email: 'teacher@iru.bg',
+        password: 'teacher123',
+        displayName: 'Преподавател',
+        role: ROLES.TEACHER,
+        courses: ['basic', 'intermediate', 'advanced']
+      },
+      {
+        email: 'student@iru.bg',
+        password: 'student123',
+        displayName: 'Студент',
+        role: ROLES.STUDENT,
+        courses: ['basic']
+      },
+      {
+        email: 'student2@iru.bg',
+        password: 'student123',
+        displayName: 'Напреднал студент',
+        role: ROLES.STUDENT,
+        courses: ['basic', 'intermediate']
+      }
+    ];
+
+    console.log('🚀 Създаване на демо потребители в Authentication + Firestore...');
+    
+    const results = [];
+    
+    for (const user of demoUsers) {
+      try {
+        console.log(`\n📝 Създаване на ${user.email}...`);
+        
+        const result = await createNewUser(user.email, user.password, {
+          displayName: user.displayName,
+          role: user.role,
+          courses: user.courses
+        });
+        
+        if (result.success) {
+          console.log(`✅ ${user.email} - успешно създаден`);
+          results.push({ email: user.email, success: true });
+        } else {
+          console.log(`⚠️ ${user.email} - ${result.error}`);
+          results.push({ email: user.email, success: false, error: result.error });
+        }
+        
+        // Малка пауза между създаването на потребители
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.error(`❌ Грешка при създаване на ${user.email}:`, error);
+        results.push({ email: user.email, success: false, error: error.message });
+      }
+    }
+    
+    console.log('\n📊 Резултати от създаването:');
+    console.log('┌─────────────────────┬─────────────────┬─────────────────────────────────┐');
+    console.log('│ Email               │ Статус          │ Детайли                         │');
+    console.log('├─────────────────────┼─────────────────┼─────────────────────────────────┤');
+    
+    results.forEach(result => {
+      const status = result.success ? '✅ Успешно' : '❌ Грешка';
+      const details = result.success ? 'Auth + Firestore' : result.error?.substring(0, 25) + '...';
+      console.log(`│ ${result.email.padEnd(19)} │ ${status.padEnd(15)} │ ${details.padEnd(31)} │`);
+    });
+    
+    console.log('└─────────────────────┴─────────────────┴─────────────────────────────────┘');
+    
+    const successCount = results.filter(r => r.success).length;
+    console.log(`\n🎯 Създадени успешно: ${successCount}/${results.length} потребители`);
+    
+    if (successCount > 0) {
+      console.log('\n🔑 Можете да влезете с:');
+      results.filter(r => r.success).forEach(result => {
+        const userInfo = demoUsers.find(u => u.email === result.email);
+        console.log(`   • ${result.email} / ${userInfo.password}`);
+      });
+    }
+    
+    return results;
+  };
+
+  // ============= АДМИНИСТРАТИВНА ФУНКЦИЯ ЗА СЪЗДАВАНЕ НА ПОТРЕБИТЕЛИ =============
+  
+  /**
+   * Създаване на нов потребител от администратор
+   */
+  export const adminCreateUser = async (adminEmail, newUserData) => {
+    try {
+      // Проверяваме дали admin има права
+      const adminProfile = await getUserProfile(adminEmail);
+      if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
+        return { success: false, error: 'Няма права за създаване на потребители' };
+      }
+
+      const { email, password, displayName, role, courses } = newUserData;
+      
+      // Валидации
+      if (!email || !password) {
+        return { success: false, error: 'Email и парола са задължителни' };
+      }
+      
+      if (!isValidRole(role)) {
+        return { success: false, error: 'Невалидна роля' };
+      }
+      
+      // Създаваме потребителя
+      const result = await createNewUser(email, password, {
+        displayName: displayName || getDisplayNameFromEmail(email),
+        role: role || ROLES.STUDENT,
+        courses: courses || ROLE_DEFINITIONS[role || ROLES.STUDENT].defaultCourses
+      });
+      
+      if (result.success) {
+        console.log(`👨‍💼 Admin ${adminEmail} създаде нов потребител: ${email}`);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Грешка при създаване на потребител от админ:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // ============= ОСТАНАЛИТЕ ФУНКЦИИ (НЕПРОМЕНЕНИ) =============
   
   /**
    * Инициализация на потребител при първо влизане
@@ -62,7 +227,7 @@ import {
       const existingProfile = await getUserProfile(userEmail);
       
       if (!existingProfile.success) {
-        // Създаваме нов профил ако не съществува
+        // Създаваме нов профил ако не съществува (но не и в Auth - той вече съществува)
         const defaultData = {
           displayName: initialData.displayName || getDisplayNameFromEmail(userEmail),
           role: initialData.role || ROLES.STUDENT,
@@ -96,7 +261,7 @@ import {
       if (!profile.success) {
         return profile;
       }
-  
+
       const roleInfo = ROLE_DEFINITIONS[profile.data.role] || ROLE_DEFINITIONS[ROLES.GUEST];
       
       return {
@@ -146,11 +311,11 @@ import {
       if (!profile.success) {
         return { success: false, error: 'Потребителят не съществува' };
       }
-  
+
       if (!hasAccessToCourse(profile.data, courseId)) {
         return { success: false, error: 'Няма достъп до този курс' };
       }
-  
+
       // Записваме в курса
       const result = await enrollInCourse(userEmail, courseId, totalVideos);
       
@@ -186,13 +351,13 @@ import {
       if (!stats.success) {
         return stats;
       }
-  
+
       const courseProgress = stats.data.courseProgress.reduce((acc, progress) => {
         const courseId = progress.courseId;
         acc[courseId] = progress;
         return acc;
       }, {});
-  
+
       return { success: true, data: courseProgress };
     } catch (error) {
       console.error('❌ Грешка при получаване на прогрес:', error);
@@ -284,7 +449,7 @@ import {
       if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
         return { success: false, error: 'Няма права за тази операция' };
       }
-  
+
       const result = await grantCourseAccess(targetUserEmail, courseId);
       
       if (result.success) {
@@ -308,7 +473,7 @@ import {
       if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
         return { success: false, error: 'Няма права за тази операция' };
       }
-  
+
       const result = await revokeCourseAccess(targetUserEmail, courseId);
       
       if (result.success) {
@@ -332,7 +497,7 @@ import {
       if (!adminProfile.success || !hasPermission(adminProfile.data, 'view_analytics')) {
         return { success: false, error: 'Няма права за тази операция' };
       }
-  
+
       return await getAllUsers();
     } catch (error) {
       console.error('❌ Грешка при получаване на потребители:', error);
@@ -352,7 +517,7 @@ import {
           return { success: false, error: 'Няма права за тази операция' };
         }
       }
-  
+
       const stats = await getActivityStats(userEmail);
       
       if (stats.success) {
@@ -437,13 +602,16 @@ import {
   export const getRoleInfo = (role) => {
     return ROLE_DEFINITIONS[role] || ROLE_DEFINITIONS[ROLES.GUEST];
   };
-  
-  // ============= СЪЗДАВАНЕ НА ДЕМО ПОТРЕБИТЕЛИ =============
+
+  // ============= СТАРА ФУНКЦИЯ ЗА СЪВМЕСТИМОСТ =============
   
   /**
-   * Създаване на демо потребители за тестване
+   * Създаване на демо потребители само във Firestore (стара версия)
    */
   export const createDemoUsers = async () => {
+    console.log('⚠️ ВАЖНО: Използвате старата функция createDemoUsers()');
+    console.log('🔄 Препоръчваме да използвате createDemoUsersWithAuth() за пълно създаване');
+    
     const demoUsers = [
       {
         email: 'admin@iru.bg',
@@ -470,14 +638,14 @@ import {
         courses: ['basic', 'intermediate']
       }
     ];
-  
-    console.log('🚀 Създаване на демо потребители...');
+
+    console.log('🚀 Създаване на демо потребители само във Firestore...');
     
     for (const user of demoUsers) {
       try {
         const result = await createUserProfile(user.email, user);
         if (result.success) {
-          console.log(`✅ Създаден демо потребител: ${user.email}`);
+          console.log(`✅ Създаден демо потребител във Firestore: ${user.email}`);
         } else {
           console.log(`⚠️ Потребител ${user.email} вече съществува или има грешка`);
         }
@@ -486,11 +654,20 @@ import {
       }
     }
     
+    console.log('\n⚠️ ЗАБЕЛЕЖКА: Тези потребители са създадени само във Firestore!');
+    console.log('🔐 Трябва ръчно да ги създадете в Firebase Authentication или');
+    console.log('🔄 Използвайте createDemoUsersWithAuth() за автоматично създаване');
+    
     console.log('✅ Демо потребителите са готови!');
   };
   
   // Експортиране на всички функции
   export default {
+    // Нови функции за създаване с Auth
+    createNewUser,
+    createDemoUsersWithAuth,
+    adminCreateUser,
+    
     // Основни функции
     initializeUser,
     getFullUserProfile,
@@ -514,8 +691,9 @@ import {
     getAdminUsersList,
     getUserDetailedStats,
     
-    // Демо
-    createDemoUsers,
+    // Демо (двете версии)
+    createDemoUsers, // Стара версия - само Firestore
+    createDemoUsersWithAuth, // Нова версия - Auth + Firestore
     
     // Помощни
     getRoleInfo,

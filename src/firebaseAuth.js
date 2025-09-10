@@ -44,6 +44,11 @@ export const logoutUser = async () => {
 
 export const createUser = async (email, password) => {
   try {
+    // Валидация на параметрите
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return { success: false, error: 'Email и парола трябва да са string' };
+    }
+    
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     return { success: true, user: userCredential.user };
   } catch (error) {

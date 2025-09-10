@@ -1,11 +1,13 @@
-// src/contexts/AuthContext.jsx - Обновен с Firebase Firestore
+// src/contexts/AuthContext.jsx - Поправен с правилни permissions
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChange } from '../firebaseAuth';
 import { 
   initializeUser, 
   getFullUserProfile, 
   logoutUser as logoutUserService,
-  hasAccessToCourse as checkCourseAccess
+  hasAccessToCourse as checkCourseAccess,
+  hasPermission as checkPermission,
+  ROLE_DEFINITIONS
 } from '../services/userService';
 
 const AuthContext = createContext();
@@ -30,6 +32,8 @@ export const AuthProvider = ({ children }) => {
     
     setInitializing(true);
     try {
+      console.log('🔄 Инициализация на потребител:', firebaseUser.email);
+      
       // Инициализираме потребителя във Firestore
       await initializeUser(firebaseUser.email);
       
@@ -38,12 +42,14 @@ export const AuthProvider = ({ children }) => {
       
       if (profileResult.success) {
         setUserProfile(profileResult.data);
-        console.log('✅ Потребителски профил зареден:', firebaseUser.email);
+        console.log('✅ Потребителски профил зареден:', profileResult.data);
       } else {
         console.error('❌ Грешка при зареждане на профил:', profileResult.error);
+        setUserProfile(null);
       }
     } catch (error) {
       console.error('❌ Грешка при инициализация на потребител:', error);
+      setUserProfile(null);
     } finally {
       setInitializing(false);
     }
@@ -61,6 +67,7 @@ export const AuthProvider = ({ children }) => {
   // Проследяване на Firebase Auth състоянието
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
+      console.log('🔄 Auth state change:', firebaseUser?.email || 'logged out');
       setUser(firebaseUser);
       
       if (firebaseUser) {
@@ -83,6 +90,7 @@ export const AuthProvider = ({ children }) => {
       const profileResult = await getFullUserProfile(user.email);
       if (profileResult.success) {
         setUserProfile(profileResult.data);
+        console.log('🔄 Профил обновен:', profileResult.data);
       }
     } catch (error) {
       console.error('❌ Грешка при обновяване на профил:', error);
@@ -91,14 +99,27 @@ export const AuthProvider = ({ children }) => {
 
   // Проверка за достъп до курс
   const hasAccessToCourse = (courseId) => {
-    if (!userProfile) return false;
-    return checkCourseAccess(userProfile, courseId);
+    if (!userProfile) {
+      console.log('❌ hasAccessToCourse: няма userProfile');
+      return false;
+    }
+    
+    const result = checkCourseAccess(userProfile, courseId);
+    console.log(`🔍 Access to course ${courseId}:`, result);
+    return result;
   };
 
-  // Проверка за права
+  // Проверка за права - ПОПРАВЕНО
   const hasPermission = (permission) => {
-    if (!userProfile || !userProfile.roleInfo) return false;
-    return userProfile.roleInfo.permissions.includes(permission);
+    if (!userProfile) {
+      console.log('❌ hasPermission: няма userProfile');
+      return false;
+    }
+    
+    // Използваме функцията от userService
+    const result = checkPermission(userProfile, permission);
+    console.log(`🔍 Permission '${permission}' for role '${userProfile.role}':`, result);
+    return result;
   };
 
   // Получаване на роля
@@ -109,6 +130,14 @@ export const AuthProvider = ({ children }) => {
   // Получаване на display name
   const getDisplayName = () => {
     return userProfile?.displayName || user?.email?.split('@')[0] || 'Потребител';
+  };
+
+  // Проверка дали е админ
+  const isAdmin = () => {
+    const role = getUserRole();
+    const result = role === 'admin';
+    console.log(`🔍 isAdmin check: role=${role}, result=${result}`);
+    return result;
   };
 
   const value = {
@@ -125,12 +154,13 @@ export const AuthProvider = ({ children }) => {
     hasPermission,
     getUserRole,
     getDisplayName,
+    isAdmin, // Добавена функция
     
     // Данни за потребителя
     email: user?.email,
     displayName: getDisplayName(),
     role: getUserRole(),
-    roleInfo: userProfile?.roleInfo,
+    roleInfo: userProfile?.roleInfo || ROLE_DEFINITIONS['guest'],
     permissions: userProfile?.permissions,
     joinDate: userProfile?.joinDate,
     lastLogin: userProfile?.lastLogin
