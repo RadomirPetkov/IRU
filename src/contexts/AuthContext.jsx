@@ -1,13 +1,11 @@
-// src/contexts/AuthContext.jsx - Поправен с правилни permissions
+// src/contexts/AuthContext.jsx - Обновен с по-добро зареждане
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChange } from '../firebaseAuth';
 import { 
   initializeUser, 
   getFullUserProfile, 
   logoutUser as logoutUserService,
-  hasAccessToCourse as checkCourseAccess,
-  hasPermission as checkPermission,
-  ROLE_DEFINITIONS
+  hasAccessToCourse as checkCourseAccess
 } from '../services/userService';
 
 const AuthContext = createContext();
@@ -43,6 +41,8 @@ export const AuthProvider = ({ children }) => {
       if (profileResult.success) {
         setUserProfile(profileResult.data);
         console.log('✅ Потребителски профил зареден:', profileResult.data);
+        console.log('📋 Роля:', profileResult.data.role);
+        console.log('📚 Курсове:', profileResult.data.permissions?.courses);
       } else {
         console.error('❌ Грешка при зареждане на профил:', profileResult.error);
         setUserProfile(null);
@@ -50,6 +50,33 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Грешка при инициализация на потребител:', error);
       setUserProfile(null);
+    } finally {
+      setInitializing(false);
+    }
+  };
+
+  // Функция за форсирано презареждане на профила
+  const forceRefresh = async () => {
+    if (!user?.email) {
+      console.log('⚠️ Няма user email за презареждане');
+      return;
+    }
+    
+    console.log('🔄 Форсирано презареждане на профил за:', user.email);
+    setInitializing(true);
+    
+    try {
+      const profileResult = await getFullUserProfile(user.email);
+      if (profileResult.success) {
+        setUserProfile(profileResult.data);
+        console.log('✅ Профил презареден успешно:', profileResult.data);
+        console.log('📋 Нова роля:', profileResult.data.role);
+        console.log('📚 Нови курсове:', profileResult.data.permissions?.courses);
+      } else {
+        console.error('❌ Грешка при презареждане на профил:', profileResult.error);
+      }
+    } catch (error) {
+      console.error('❌ Грешка при презареждане:', error);
     } finally {
       setInitializing(false);
     }
@@ -67,7 +94,8 @@ export const AuthProvider = ({ children }) => {
   // Проследяване на Firebase Auth състоянието
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
-      console.log('🔄 Auth state change:', firebaseUser?.email || 'logged out');
+      console.log('🔥 Firebase Auth state change:', firebaseUser?.email || 'No user');
+      
       setUser(firebaseUser);
       
       if (firebaseUser) {
@@ -99,45 +127,61 @@ export const AuthProvider = ({ children }) => {
 
   // Проверка за достъп до курс
   const hasAccessToCourse = (courseId) => {
-    if (!userProfile) {
-      console.log('❌ hasAccessToCourse: няма userProfile');
+    if (!userProfile || !userProfile.permissions || !userProfile.permissions.courses) {
+      console.log('⚠️ Няма достъп - липсва userProfile или courses:', {
+        hasUserProfile: !!userProfile,
+        hasPermissions: !!userProfile?.permissions,
+        hasCourses: !!userProfile?.permissions?.courses,
+        courseId
+      });
       return false;
     }
     
-    const result = checkCourseAccess(userProfile, courseId);
-    console.log(`🔍 Access to course ${courseId}:`, result);
-    return result;
+    const hasAccess = userProfile.permissions.courses.includes(courseId);
+    console.log(`🔍 Проверка достъп до курс ${courseId}:`, hasAccess, 'Courses:', userProfile.permissions.courses);
+    return hasAccess;
   };
 
-  // Проверка за права - ПОПРАВЕНО
+  // Проверка за права
   const hasPermission = (permission) => {
-    if (!userProfile) {
-      console.log('❌ hasPermission: няма userProfile');
+    if (!userProfile || !userProfile.roleInfo) {
+      console.log('⚠️ Няма права - липсва userProfile или roleInfo:', permission);
       return false;
     }
-    
-    // Използваме функцията от userService
-    const result = checkPermission(userProfile, permission);
-    console.log(`🔍 Permission '${permission}' for role '${userProfile.role}':`, result);
-    return result;
+    const hasAccess = userProfile.roleInfo.permissions.includes(permission);
+    console.log(`🔍 Проверка право ${permission}:`, hasAccess);
+    return hasAccess;
   };
 
   // Получаване на роля
   const getUserRole = () => {
-    return userProfile?.role || 'guest';
+    const role = userProfile?.role || 'guest';
+    console.log('👤 Роля на потребителя:', role);
+    return role;
   };
 
   // Получаване на display name
   const getDisplayName = () => {
-    return userProfile?.displayName || user?.email?.split('@')[0] || 'Потребител';
+    const name = userProfile?.displayName || user?.email?.split('@')[0] || 'Потребител';
+    console.log('📝 Display name:', name);
+    return name;
   };
 
-  // Проверка дали е админ
-  const isAdmin = () => {
-    const role = getUserRole();
-    const result = role === 'admin';
-    console.log(`🔍 isAdmin check: role=${role}, result=${result}`);
-    return result;
+  // Debug функция за състоянието
+  const getDebugInfo = () => {
+    return {
+      user: user?.email,
+      userProfile: {
+        email: userProfile?.email,
+        displayName: userProfile?.displayName,
+        role: userProfile?.role,
+        courses: userProfile?.permissions?.courses,
+        roleInfo: userProfile?.roleInfo?.name
+      },
+      loading,
+      initializing,
+      isAuthenticated: !!user
+    };
   };
 
   const value = {
@@ -150,21 +194,45 @@ export const AuthProvider = ({ children }) => {
     // Функции
     logout,
     refreshProfile,
+    forceRefresh,
     hasAccessToCourse,
     hasPermission,
     getUserRole,
     getDisplayName,
-    isAdmin, // Добавена функция
+    getDebugInfo,
     
     // Данни за потребителя
     email: user?.email,
     displayName: getDisplayName(),
     role: getUserRole(),
-    roleInfo: userProfile?.roleInfo || ROLE_DEFINITIONS['guest'],
+    roleInfo: userProfile?.roleInfo,
     permissions: userProfile?.permissions,
     joinDate: userProfile?.joinDate,
     lastLogin: userProfile?.lastLogin
   };
+
+  // Debug log при промяна на състоянието
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🐛 AuthContext Debug Info:', getDebugInfo());
+    }
+  }, [user, userProfile, loading, initializing]);
+
+  // Добавяме debug функции към window в development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      window.authDebug = {
+        getDebugInfo,
+        forceRefresh,
+        refreshProfile,
+        hasAccessToCourse: (courseId) => {
+          console.log('🔍 Debug check access to:', courseId);
+          return hasAccessToCourse(courseId);
+        }
+      };
+      console.log('🛠️ Auth debug functions available: window.authDebug');
+    }
+  }, [userProfile]);
 
   return (
     <AuthContext.Provider value={value}>

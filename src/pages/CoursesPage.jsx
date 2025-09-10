@@ -1,4 +1,4 @@
-// src/pages/CoursesPage.jsx - Обновена с нови импорти
+// src/pages/CoursesPage.jsx - Поправен с Firestore данни
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -16,10 +16,9 @@ import {
   Shield
 } from 'lucide-react';
 import { courses } from '../data/coursesData';
-import { getUserPermissions, hasAccessToCourse, getRoleInfo } from '../data/userPermissions';
 
 const CoursesPage = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, userProfile, hasAccessToCourse } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
 
   const handleLoginSuccess = () => {
@@ -110,13 +109,12 @@ const CoursesPage = () => {
     );
   }
 
-  const userPermissions = getUserPermissions(user?.email);
-  const roleInfo = getRoleInfo(userPermissions.role);
+  // Филтриране на курсовете въз основа на достъпа от Firestore
   const accessibleCourses = courses.filter(course => 
-    hasAccessToCourse(user?.email, course.id)
+    hasAccessToCourse(course.id)
   );
   const lockedCourses = courses.filter(course => 
-    !hasAccessToCourse(user?.email, course.id)
+    !hasAccessToCourse(course.id)
   );
 
   return (
@@ -135,8 +133,13 @@ const CoursesPage = () => {
             
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <div className="flex items-center">
-                <div className={`w-3 h-3 rounded-full mr-2 ${roleInfo.color.replace('text-', 'bg-').replace('100', '500')}`}></div>
-                {userPermissions.displayName}
+                <div className={`w-3 h-3 rounded-full mr-2 ${
+                  userProfile?.roleInfo?.color?.includes('red') ? 'bg-red-500' :
+                  userProfile?.roleInfo?.color?.includes('green') ? 'bg-green-500' :
+                  userProfile?.roleInfo?.color?.includes('blue') ? 'bg-blue-500' :
+                  'bg-gray-500'
+                }`}></div>
+                {userProfile?.displayName || 'Зареждане...'}
               </div>
               <div className="flex items-center">
                 <BookOpen size={16} className="mr-1" />
@@ -160,16 +163,28 @@ const CoursesPage = () => {
             
             <div className="bg-white bg-opacity-10 rounded-lg p-6 max-w-lg mx-auto">
               <div className="flex items-center justify-center mb-3">
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${roleInfo.color} bg-white`}>
-                  {roleInfo.name}
-                </div>
+                {userProfile?.roleInfo && (
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${userProfile.roleInfo.color} bg-white`}>
+                    {userProfile.roleInfo.name}
+                  </div>
+                )}
               </div>
               <p className="text-blue-100 mb-2">
-                Добре дошли, <span className="font-semibold">{userPermissions.displayName}</span>
+                Добре дошли, <span className="font-semibold">{userProfile?.displayName || 'Потребител'}</span>
               </p>
               <p className="text-sm text-blue-200">
                 Имате достъп до {accessibleCourses.length} от {courses.length} курса
               </p>
+              
+              {/* Debug информация само в development */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-2 bg-black bg-opacity-20 rounded text-xs text-left">
+                  <div>Email: {user?.email}</div>
+                  <div>Role: {userProfile?.role}</div>
+                  <div>Courses: {userProfile?.permissions?.courses?.join(', ')}</div>
+                  <div>Display: {userProfile?.displayName}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -311,13 +326,26 @@ const CoursesPage = () => {
                 Няма достъпни курсове
               </h3>
               <p className="text-gray-600 mb-4">
-                Вашата роля: <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleInfo.color}`}>
-                  {roleInfo.name}
-                </span>
+                Вашата роля: {userProfile?.roleInfo && (
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${userProfile.roleInfo.color}`}>
+                    {userProfile.roleInfo.name}
+                  </span>
+                )}
+              </p>
+              <p className="text-gray-500 text-sm mb-4">
+                Email: {user?.email}
               </p>
               <p className="text-gray-500 text-sm">
                 Свържете се с администратор за предоставяне на достъп до курсове
               </p>
+              
+              {/* Бутон за презареждане */}
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                Презареди страницата
+              </button>
             </div>
           )}
         </div>
