@@ -1,4 +1,4 @@
-// src/pages/CoursesPage.jsx - Поправен с Firestore данни
+// src/pages/CoursesPage.jsx - Почистена версия
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -175,16 +175,6 @@ const CoursesPage = () => {
               <p className="text-sm text-blue-200">
                 Имате достъп до {accessibleCourses.length} от {courses.length} курса
               </p>
-              
-              {/* Debug информация само в development */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mt-4 p-2 bg-black bg-opacity-20 rounded text-xs text-left">
-                  <div>Email: {user?.email}</div>
-                  <div>Role: {userProfile?.role}</div>
-                  <div>Courses: {userProfile?.permissions?.courses?.join(', ')}</div>
-                  <div>Display: {userProfile?.displayName}</div>
-                </div>
-              )}
             </div>
           </div>
         </div>

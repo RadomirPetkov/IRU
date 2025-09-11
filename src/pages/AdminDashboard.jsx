@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Debug версия
+// src/pages/AdminDashboard.jsx - Почистена версия
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
@@ -37,25 +37,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [debugInfo, setDebugInfo] = useState({});
   const [error, setError] = useState(null);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('🐛 Admin Dashboard Debug Info:');
-    console.log('User:', user?.email);
-    console.log('UserProfile:', userProfile);
-    console.log('Has permission:', hasPermission);
-    console.log('Is authenticated:', isAuthenticated);
-    
-    setDebugInfo({
-      userEmail: user?.email,
-      role: userProfile?.role,
-      roleInfo: userProfile?.roleInfo?.name,
-      permissions: userProfile?.roleInfo?.permissions,
-      hasViewAnalytics: hasPermission ? hasPermission('view_analytics') : false
-    });
-  }, [user, userProfile, hasPermission, isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated && user?.email) {
@@ -63,62 +45,46 @@ const AdminDashboard = () => {
     }
   }, [isAuthenticated, user?.email]);
 
-  // Проверка за админ права с debug
-  const checkAdminAccess = () => {
-    console.log('🔐 Checking admin access...');
-    console.log('Is authenticated:', isAuthenticated);
-    console.log('Has permission function:', typeof hasPermission);
-    console.log('User profile:', userProfile);
-    
-    if (!isAuthenticated) {
-      console.log('❌ Not authenticated');
-      return false;
-    }
-    
-    if (!hasPermission) {
-      console.log('❌ No hasPermission function');
-      return false;
-    }
-    
-    const hasAnalytics = hasPermission('view_analytics');
-    console.log('Has view_analytics permission:', hasAnalytics);
-    
-    return hasAnalytics;
-  };
+  // Проверка за админ права
+  if (!isAuthenticated) {
+    return <Navigate to="/courses" replace />;
+  }
+
+  if (!hasPermission || !hasPermission('view_analytics')) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="container mx-auto px-4 max-w-[1500px] py-16">
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <AlertCircle className="text-red-500 mx-auto mb-4" size={64} />
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Няма достъп</h2>
+            <p className="text-gray-600 mb-6">
+              Нямате права за достъп до административния панел
+            </p>
+            <Link 
+              to="/courses" 
+              className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Обратно към курсовете
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const loadUsers = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Loading users with admin email:', user?.email);
+      const result = await getAdminUsersList(user?.email);
       
-      // Debug: Опитваме се да заредим директно от Firestore
-      const { getAllUsers } = await import('../firebase/firestore');
-      const directResult = await getAllUsers();
-      
-      console.log('📊 Direct Firestore result:', directResult);
-      
-      if (directResult.success) {
-        console.log('✅ Found users directly:', directResult.data.length);
-        setUsers(directResult.data);
+      if (result.success) {
+        setUsers(result.data);
       } else {
-        console.log('⚠️ No direct users found, trying service...');
-        
-        // Опитваме се през сервиса
-        const result = await getAdminUsersList(user?.email);
-        console.log('📊 Service result:', result);
-        
-        if (result.success) {
-          setUsers(result.data);
-          console.log('✅ Users loaded via service:', result.data.length);
-        } else {
-          setError(result.error);
-          console.error('❌ Error loading users:', result.error);
-        }
+        setError(result.error);
       }
     } catch (error) {
-      console.error('❌ Exception loading users:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -132,11 +98,9 @@ const AdminDashboard = () => {
       if (result.success) {
         setUserStats(result.data);
       } else {
-        console.error('⚠ Грешка при зареждане на статистики:', result.error);
         setUserStats(null);
       }
     } catch (error) {
-      console.error('⚠ Грешка при зареждане на статистики:', error);
       setUserStats(null);
     } finally {
       setStatsLoading(false);
@@ -152,17 +116,14 @@ const AdminDashboard = () => {
     try {
       const result = await addCourseAccessToUser(user?.email, userEmail, courseId);
       if (result.success) {
-        await loadUsers(); // Презареждаме списъка
+        await loadUsers();
         if (selectedUser && selectedUser.email === userEmail) {
           const updatedUser = users.find(u => u.email === userEmail);
           setSelectedUser(updatedUser);
         }
-        console.log('✅ Достъпът е добавен успешно');
-      } else {
-        console.error('⚠ Грешка при добавяне на достъп:', result.error);
       }
     } catch (error) {
-      console.error('⚠ Грешка при добавяне на достъп:', error);
+      console.error('Грешка при добавяне на достъп:', error);
     }
   };
 
@@ -170,17 +131,14 @@ const AdminDashboard = () => {
     try {
       const result = await removeCourseAccessFromUser(user?.email, userEmail, courseId);
       if (result.success) {
-        await loadUsers(); // Презареждаме списъка
+        await loadUsers();
         if (selectedUser && selectedUser.email === userEmail) {
           const updatedUser = users.find(u => u.email === userEmail);
           setSelectedUser(updatedUser);
         }
-        console.log('✅ Достъпът е премахнат успешно');
-      } else {
-        console.error('⚠ Грешка при премахване на достъп:', result.error);
       }
     } catch (error) {
-      console.error('⚠ Грешка при премахване на достъп:', error);
+      console.error('Грешка при премахване на достъп:', error);
     }
   };
 
@@ -207,42 +165,6 @@ const AdminDashboard = () => {
     return { totalUsers, activeUsers, roleStats };
   };
 
-  // Проверяваме достъпа
-  if (!isAuthenticated) {
-    return <Navigate to="/courses" replace />;
-  }
-
-  if (!checkAdminAccess()) {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-20">
-        <div className="container mx-auto px-4 max-w-[1500px] py-16">
-          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-            <AlertCircle className="text-red-500 mx-auto mb-4" size={64} />
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Няма достъп</h2>
-            <p className="text-gray-600 mb-6">
-              Нямате права за достъп до административния панел
-            </p>
-            
-            {/* Debug информация */}
-            <div className="bg-gray-100 rounded-lg p-4 text-left text-sm">
-              <h3 className="font-semibold mb-2">Debug информация:</h3>
-              <pre className="text-xs overflow-auto">
-                {JSON.stringify(debugInfo, null, 2)}
-              </pre>
-            </div>
-            
-            <Link 
-              to="/courses" 
-              className="inline-block mt-6 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              Обратно към курсовете
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const overallStats = getOverallStats();
 
   if (loading) {
@@ -251,16 +173,6 @@ const AdminDashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Зареждане на администраторския панел...</p>
-          
-          {/* Debug информация при зареждане */}
-          <div className="mt-4 bg-gray-100 rounded-lg p-4 text-left text-sm max-w-md">
-            <h3 className="font-semibold mb-2">Debug информация:</h3>
-            <div className="text-xs">
-              <div>Email: {user?.email}</div>
-              <div>Role: {userProfile?.role}</div>
-              <div>Loading: {loading ? 'да' : 'не'}</div>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -294,14 +206,6 @@ const AdminDashboard = () => {
             <div>
               <h1 className="text-4xl font-bold mb-4">Административен панел</h1>
               <p className="text-xl text-indigo-100">Управление на потребители и статистики</p>
-              
-              {/* Debug информация в header */}
-              <div className="mt-4 bg-white bg-opacity-10 rounded-lg p-3 text-sm">
-                <div>Потребители в базата: {users.length}</div>
-                <div>Вашата роля: {userProfile?.roleInfo?.name}</div>
-                <div>Email: {user?.email}</div>
-                {error && <div className="text-red-300">Грешка: {error}</div>}
-              </div>
             </div>
             
             <button
@@ -396,26 +300,6 @@ const AdminDashboard = () => {
                     >
                       Създай първия потребител
                     </button>
-                    
-                    {/* Debug бутони */}
-                    <div className="mt-6 p-4 bg-gray-100 rounded-lg">
-                      <h4 className="font-semibold mb-2">Debug опции:</h4>
-                      <button
-                        onClick={loadUsers}
-                        className="mr-2 bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
-                      >
-                        Презареди потребители
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log('🐛 Current state:', { users, loading, error });
-                          console.log('🐛 User profile:', userProfile);
-                        }}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
-                      >
-                        Покажи в конзолата
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   <div className="max-h-96 overflow-y-auto">
@@ -588,8 +472,7 @@ const AdminDashboard = () => {
         <AdminUserCreation 
           adminEmail={user?.email}
           onUserCreated={(result) => {
-            console.log('✅ Нов потребител създаден:', result);
-            loadUsers(); // Презарежда списъка с потребители
+            loadUsers();
           }}
           onClose={() => setShowCreateUser(false)}
         />

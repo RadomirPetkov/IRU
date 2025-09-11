@@ -1,4 +1,4 @@
-// src/components/ProtectedVideoGallery.jsx
+// src/components/ProtectedVideoGallery.jsx - Почистена версия
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import VideoGallery from './VideoGallery';
@@ -102,30 +102,6 @@ const ProtectedVideoGallery = ({ videos = [], title = "Обучителни ви
                   <p className="text-sm text-gray-500 mt-4">
                     Нямате акаунт? Свържете се с нас за регистрация
                   </p>
-                </div>
-
-                {/* Demo Info */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-800 mb-2">
-                    🚀 Демо режим - Тествайте сега!
-                  </h4>
-                  <p className="text-sm text-blue-700 mb-3">
-                    Използвайте един от демо акаунтите за да видите видео съдържанието:
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                    <div className="bg-white rounded p-2 border border-blue-200">
-                      <strong>Администратор:</strong><br/>
-                      admin@iru.bg / admin123
-                    </div>
-                    <div className="bg-white rounded p-2 border border-blue-200">
-                      <strong>Преподавател:</strong><br/>
-                      teacher@iru.bg / teacher123
-                    </div>
-                    <div className="bg-white rounded p-2 border border-blue-200">
-                      <strong>Студент:</strong><br/>
-                      student@iru.bg / student123
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
