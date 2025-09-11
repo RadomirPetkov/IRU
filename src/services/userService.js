@@ -1,4 +1,4 @@
-// src/services/userService.js - С автоматично създаване в Authentication
+// src/services/userService.js - Production готова версия (БЕЗ ДЕМО ДАННИ)
 import {
     getUserProfile,
     createUserProfile,
@@ -54,180 +54,22 @@ import {
     }
   };
 
-  // ============= ФУНКЦИЯ ЗА СЪЗДАВАНЕ НА ПОТРЕБИТЕЛ И В AUTH И ВЪВ FIRESTORE =============
-  
-  /**
-   * Създаване на нов потребител в Authentication + Firestore
-   */
- export const createNewUser = async (email, password, userData = {}) => {
-  try {
-    // Валидация на параметрите
-    if (typeof email !== 'string' || typeof password !== 'string') {
-      return { success: false, error: 'Email и парола трябва да са string' };
-    }
-    
-    console.log(`🔐 Създаване на нов потребител: ${email}`);
-    console.log(`📝 Парола тип: ${typeof password}, дължина: ${password.length}`);
-    
-    // 1. Първо създаваме акаунта в Firebase Authentication
-    const authResult = await createUser(email, password);
-    
-    // ... останалия код
-  } catch (error) {
-    console.error('❌ Общ грешка при създаване на потребител:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-  // ============= СЪЗДАВАНЕ НА ДЕМО ПОТРЕБИТЕЛИ С АВТЕНТИФИКАЦИЯ =============
-  
-  /**
-   * Създаване на демо потребители в Authentication + Firestore
-   */
-  export const createDemoUsersWithAuth = async () => {
-    const demoUsers = [
-      {
-        email: 'admin@iru.bg',
-        password: 'admin123',
-        displayName: 'Администратор',
-        role: ROLES.ADMIN,
-        courses: ['basic', 'intermediate', 'advanced', 'expert']
-      },
-      {
-        email: 'teacher@iru.bg',
-        password: 'teacher123',
-        displayName: 'Преподавател',
-        role: ROLES.TEACHER,
-        courses: ['basic', 'intermediate', 'advanced']
-      },
-      {
-        email: 'student@iru.bg',
-        password: 'student123',
-        displayName: 'Студент',
-        role: ROLES.STUDENT,
-        courses: ['basic']
-      },
-      {
-        email: 'student2@iru.bg',
-        password: 'student123',
-        displayName: 'Напреднал студент',
-        role: ROLES.STUDENT,
-        courses: ['basic', 'intermediate']
-      }
-    ];
-
-    console.log('🚀 Създаване на демо потребители в Authentication + Firestore...');
-    
-    const results = [];
-    
-    for (const user of demoUsers) {
-      try {
-        console.log(`\n📝 Създаване на ${user.email}...`);
-        
-        const result = await createNewUser(user.email, user.password, {
-          displayName: user.displayName,
-          role: user.role,
-          courses: user.courses
-        });
-        
-        if (result.success) {
-          console.log(`✅ ${user.email} - успешно създаден`);
-          results.push({ email: user.email, success: true });
-        } else {
-          console.log(`⚠️ ${user.email} - ${result.error}`);
-          results.push({ email: user.email, success: false, error: result.error });
-        }
-        
-        // Малка пауза между създаването на потребители
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-      } catch (error) {
-        console.error(`❌ Грешка при създаване на ${user.email}:`, error);
-        results.push({ email: user.email, success: false, error: error.message });
-      }
-    }
-    
-    console.log('\n📊 Резултати от създаването:');
-    console.log('┌─────────────────────┬─────────────────┬─────────────────────────────────┐');
-    console.log('│ Email               │ Статус          │ Детайли                         │');
-    console.log('├─────────────────────┼─────────────────┼─────────────────────────────────┤');
-    
-    results.forEach(result => {
-      const status = result.success ? '✅ Успешно' : '❌ Грешка';
-      const details = result.success ? 'Auth + Firestore' : result.error?.substring(0, 25) + '...';
-      console.log(`│ ${result.email.padEnd(19)} │ ${status.padEnd(15)} │ ${details.padEnd(31)} │`);
-    });
-    
-    console.log('└─────────────────────┴─────────────────┴─────────────────────────────────┘');
-    
-    const successCount = results.filter(r => r.success).length;
-    console.log(`\n🎯 Създадени успешно: ${successCount}/${results.length} потребители`);
-    
-    if (successCount > 0) {
-      console.log('\n🔑 Можете да влезете с:');
-      results.filter(r => r.success).forEach(result => {
-        const userInfo = demoUsers.find(u => u.email === result.email);
-        console.log(`   • ${result.email} / ${userInfo.password}`);
-      });
-    }
-    
-    return results;
-  };
-
-  // ============= АДМИНИСТРАТИВНА ФУНКЦИЯ ЗА СЪЗДАВАНЕ НА ПОТРЕБИТЕЛИ =============
-  
-  /**
-   * Създаване на нов потребител от администратор
-   */
-  export const adminCreateUser = async (adminEmail, newUserData) => {
-    try {
-      // Проверяваме дали admin има права
-      const adminProfile = await getUserProfile(adminEmail);
-      if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
-        return { success: false, error: 'Няма права за създаване на потребители' };
-      }
-
-      const { email, password, displayName, role, courses } = newUserData;
-      
-      // Валидации
-      if (!email || !password) {
-        return { success: false, error: 'Email и парола са задължителни' };
-      }
-      
-      if (!isValidRole(role)) {
-        return { success: false, error: 'Невалидна роля' };
-      }
-      
-      // Създаваме потребителя
-      const result = await createNewUser(email, password, {
-        displayName: displayName || getDisplayNameFromEmail(email),
-        role: role || ROLES.STUDENT,
-        courses: courses || ROLE_DEFINITIONS[role || ROLES.STUDENT].defaultCourses
-      });
-      
-      if (result.success) {
-        console.log(`👨‍💼 Admin ${adminEmail} създаде нов потребител: ${email}`);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Грешка при създаване на потребител от админ:', error);
-      return { success: false, error: error.message };
-    }
-  };
-
-  // ============= ОСТАНАЛИТЕ ФУНКЦИИ (НЕПРОМЕНЕНИ) =============
+  // ============= ОСНОВНИ ФУНКЦИИ =============
   
   /**
    * Инициализация на потребител при първо влизане
    */
   export const initializeUser = async (userEmail, initialData = {}) => {
     try {
+      if (!userEmail || !userEmail.includes('@')) {
+        return { success: false, error: 'Невалиден email' };
+      }
+
       // Проверяваме дали потребителят съществува
       const existingProfile = await getUserProfile(userEmail);
       
       if (!existingProfile.success) {
-        // Създаваме нов профил ако не съществува (но не и в Auth - той вече съществува)
+        // Създаваме нов профил ако не съществува
         const defaultData = {
           displayName: initialData.displayName || getDisplayNameFromEmail(userEmail),
           role: initialData.role || ROLES.STUDENT,
@@ -236,7 +78,6 @@ import {
         };
         
         await createUserProfile(userEmail, defaultData);
-        console.log('✅ Нов потребителски профил създаден:', userEmail);
       }
       
       // Започваме нова сесия
@@ -247,8 +88,8 @@ import {
       
       return { success: true };
     } catch (error) {
-      console.error('❌ Грешка при инициализация на потребител:', error);
-      return { success: false, error: error.message };
+      console.error('Error initializing user:', error);
+      return { success: false, error: 'Грешка при инициализация на потребител' };
     }
   };
   
@@ -257,6 +98,10 @@ import {
    */
   export const getFullUserProfile = async (userEmail) => {
     try {
+      if (!userEmail || !userEmail.includes('@')) {
+        return { success: false, error: 'Невалиден email' };
+      }
+
       const profile = await getUserProfile(userEmail);
       if (!profile.success) {
         return profile;
@@ -272,8 +117,8 @@ import {
         }
       };
     } catch (error) {
-      console.error('❌ Грешка при получаване на профил:', error);
-      return { success: false, error: error.message };
+      console.error('Error getting full user profile:', error);
+      return { success: false, error: 'Грешка при получаване на профил' };
     }
   };
   
@@ -281,7 +126,7 @@ import {
    * Проверка дали потребителят има достъп до курс
    */
   export const hasAccessToCourse = (userProfile, courseId) => {
-    if (!userProfile || !userProfile.permissions) {
+    if (!userProfile || !userProfile.permissions || !Array.isArray(userProfile.permissions.courses)) {
       return false;
     }
     return userProfile.permissions.courses.includes(courseId);
@@ -296,154 +141,74 @@ import {
     }
     
     const roleInfo = ROLE_DEFINITIONS[userProfile.role];
-    return roleInfo && roleInfo.permissions.includes(permission);
-  };
-  
-  // ============= УПРАВЛЕНИЕ НА КУРСОВЕ =============
-  
-  /**
-   * Записване в курс
-   */
-  export const enrollUserInCourse = async (userEmail, courseId, totalVideos) => {
-    try {
-      // Проверяваме дали потребителят има достъп
-      const profile = await getUserProfile(userEmail);
-      if (!profile.success) {
-        return { success: false, error: 'Потребителят не съществува' };
-      }
-
-      if (!hasAccessToCourse(profile.data, courseId)) {
-        return { success: false, error: 'Няма достъп до този курс' };
-      }
-
-      // Записваме в курса
-      const result = await enrollInCourse(userEmail, courseId, totalVideos);
-      
-      if (result.success) {
-        console.log(`✅ Потребител ${userEmail} записан в курс ${courseId}`);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Грешка при записване в курс:', error);
-      return { success: false, error: error.message };
-    }
-  };
-  
-  /**
-   * Получаване на прогрес по конкретен курс
-   */
-  export const getCourseProgress = async (userEmail, courseId) => {
-    try {
-      return await getFirestoreCourseProgress(userEmail, courseId);
-    } catch (error) {
-      console.error('❌ Грешка при получаване на прогрес по курс:', error);
-      return { success: false, error: error.message };
-    }
-  };
-  
-  /**
-   * Получаване на прогрес по всички курсове
-   */
-  export const getAllCourseProgress = async (userEmail) => {
-    try {
-      const stats = await getActivityStats(userEmail);
-      if (!stats.success) {
-        return stats;
-      }
-
-      const courseProgress = stats.data.courseProgress.reduce((acc, progress) => {
-        const courseId = progress.courseId;
-        acc[courseId] = progress;
-        return acc;
-      }, {});
-
-      return { success: true, data: courseProgress };
-    } catch (error) {
-      console.error('❌ Грешка при получаване на прогрес:', error);
-      return { success: false, error: error.message };
-    }
-  };
-  
-  // ============= УПРАВЛЕНИЕ НА ВИДЕА =============
-  
-  /**
-   * Стартиране на видео
-   */
-  export const startVideo = async (userEmail, courseId, videoId) => {
-    try {
-      const result = await recordVideoWatch(userEmail, courseId, videoId);
-      
-      if (result.success) {
-        console.log(`📹 Потребител ${userEmail} започна видео ${videoId} от курс ${courseId}`);
-        
-        // Добавяме видеото в текущата сесия
-        const sessionId = localStorage.getItem('currentSessionId');
-        if (sessionId) {
-          // Тук можем да добавим логика за обновяване на сесията
-        }
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Грешка при стартиране на видео:', error);
-      return { success: false, error: error.message };
-    }
-  };
-  
-  /**
-   * Завършване на видео
-   */
-  export const completeVideo = async (userEmail, courseId, videoId) => {
-    try {
-      const result = await markVideoAsCompleted(userEmail, courseId, videoId);
-      
-      if (result.success) {
-        console.log(`✅ Потребител ${userEmail} завърши видео ${videoId} от курс ${courseId}`);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('❌ Грешка при завършване на видео:', error);
-      return { success: false, error: error.message };
-    }
-  };
-  
-  /**
-   * Получаване на завършени видеа за курс
-   */
-  export const getUserCompletedVideos = async (userEmail, courseId) => {
-    try {
-      return await getCompletedVideos(userEmail, courseId);
-    } catch (error) {
-      console.error('❌ Грешка при получаване на завършени видеа:', error);
-      return { success: false, error: error.message };
-    }
-  };
-  
-  // ============= СЕСИИ =============
-  
-  /**
-   * Приключване на потребителска сесия
-   */
-  export const logoutUser = async (userEmail) => {
-    try {
-      await endUserSession(userEmail);
-      console.log(`👋 Потребител ${userEmail} се излогна`);
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Грешка при излизане:', error);
-      return { success: false, error: error.message };
-    }
+    return roleInfo && Array.isArray(roleInfo.permissions) && roleInfo.permissions.includes(permission);
   };
   
   // ============= АДМИНИСТРАТИВНИ ФУНКЦИИ =============
+  
+  /**
+   * Създаване на нов потребител от администратор
+   */
+  export const adminCreateUser = async (adminEmail, newUserData) => {
+    try {
+      if (!adminEmail || !newUserData) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
+      // Проверяваме дали admin има права
+      const adminProfile = await getUserProfile(adminEmail);
+      if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
+        return { success: false, error: 'Няма права за създаване на потребители' };
+      }
+
+      const { email, password, displayName, role, courses } = newUserData;
+      
+      // Валидации
+      if (!email || !password) {
+        return { success: false, error: 'Email и парола са задължителни' };
+      }
+      
+      if (!email.includes('@') || password.length < 6) {
+        return { success: false, error: 'Невалиден email или парола прекалено къса' };
+      }
+      
+      if (!isValidRole(role)) {
+        return { success: false, error: 'Невалидна роля' };
+      }
+      
+      // Създаваме потребителя в Authentication
+      const authResult = await createUser(email, password);
+      if (!authResult.success) {
+        return authResult;
+      }
+
+      // Създаваме профила във Firestore
+      const profileResult = await createUserProfile(email, {
+        displayName: displayName || getDisplayNameFromEmail(email),
+        role: role || ROLES.STUDENT,
+        courses: courses || ROLE_DEFINITIONS[role || ROLES.STUDENT].defaultCourses
+      });
+
+      if (!profileResult.success) {
+        return profileResult;
+      }
+      
+      return { success: true, message: 'Потребителят е създаден успешно' };
+    } catch (error) {
+      console.error('Error creating user by admin:', error);
+      return { success: false, error: 'Грешка при създаване на потребител' };
+    }
+  };
   
   /**
    * Добавяне на достъп до курс (само за админи)
    */
   export const addCourseAccessToUser = async (adminEmail, targetUserEmail, courseId) => {
     try {
+      if (!adminEmail || !targetUserEmail || !courseId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
       // Проверяваме дали admin има права
       const adminProfile = await getUserProfile(adminEmail);
       if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
@@ -451,15 +216,10 @@ import {
       }
 
       const result = await grantCourseAccess(targetUserEmail, courseId);
-      
-      if (result.success) {
-        console.log(`✅ Admin ${adminEmail} даде достъп до курс ${courseId} на ${targetUserEmail}`);
-      }
-      
       return result;
     } catch (error) {
-      console.error('❌ Грешка при добавяне на достъп:', error);
-      return { success: false, error: error.message };
+      console.error('Error adding course access:', error);
+      return { success: false, error: 'Грешка при добавяне на достъп' };
     }
   };
   
@@ -468,6 +228,10 @@ import {
    */
   export const removeCourseAccessFromUser = async (adminEmail, targetUserEmail, courseId) => {
     try {
+      if (!adminEmail || !targetUserEmail || !courseId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
       // Проверяваме дали admin има права
       const adminProfile = await getUserProfile(adminEmail);
       if (!adminProfile.success || !hasPermission(adminProfile.data, 'manage_users')) {
@@ -475,15 +239,10 @@ import {
       }
 
       const result = await revokeCourseAccess(targetUserEmail, courseId);
-      
-      if (result.success) {
-        console.log(`❌ Admin ${adminEmail} премахна достъп до курс ${courseId} от ${targetUserEmail}`);
-      }
-      
       return result;
     } catch (error) {
-      console.error('❌ Грешка при премахване на достъп:', error);
-      return { success: false, error: error.message };
+      console.error('Error removing course access:', error);
+      return { success: false, error: 'Грешка при премахване на достъп' };
     }
   };
   
@@ -492,6 +251,10 @@ import {
    */
   export const getAdminUsersList = async (adminEmail) => {
     try {
+      if (!adminEmail) {
+        return { success: false, error: 'Невалиден admin email' };
+      }
+
       // Проверяваме дали admin има права
       const adminProfile = await getUserProfile(adminEmail);
       if (!adminProfile.success || !hasPermission(adminProfile.data, 'view_analytics')) {
@@ -500,8 +263,8 @@ import {
 
       return await getAllUsers();
     } catch (error) {
-      console.error('❌ Грешка при получаване на потребители:', error);
-      return { success: false, error: error.message };
+      console.error('Error getting admin users list:', error);
+      return { success: false, error: 'Грешка при получаване на потребители' };
     }
   };
   
@@ -510,6 +273,10 @@ import {
    */
   export const getUserDetailedStats = async (userEmail, requestingUserEmail) => {
     try {
+      if (!userEmail || !requestingUserEmail) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
       // Проверяваме права - или същия потребител или админ
       if (userEmail !== requestingUserEmail) {
         const adminProfile = await getUserProfile(requestingUserEmail);
@@ -543,8 +310,120 @@ import {
       
       return stats;
     } catch (error) {
-      console.error('❌ Грешка при получаване на статистики:', error);
-      return { success: false, error: error.message };
+      console.error('Error getting detailed user stats:', error);
+      return { success: false, error: 'Грешка при получаване на статистики' };
+    }
+  };
+
+  // ============= КУРСОВЕ И ВИДЕА =============
+  
+  /**
+   * Записване в курс
+   */
+  export const enrollUserInCourse = async (userEmail, courseId, totalVideos) => {
+    try {
+      if (!userEmail || !courseId || !totalVideos) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
+      // Проверяваме дали потребителят има достъп
+      const profile = await getUserProfile(userEmail);
+      if (!profile.success) {
+        return { success: false, error: 'Потребителят не съществува' };
+      }
+
+      if (!hasAccessToCourse(profile.data, courseId)) {
+        return { success: false, error: 'Няма достъп до този курс' };
+      }
+
+      // Записваме в курса
+      const result = await enrollInCourse(userEmail, courseId, totalVideos);
+      return result;
+    } catch (error) {
+      console.error('Error enrolling user in course:', error);
+      return { success: false, error: 'Грешка при записване в курс' };
+    }
+  };
+  
+  /**
+   * Получаване на прогрес по конкретен курс
+   */
+  export const getCourseProgress = async (userEmail, courseId) => {
+    try {
+      if (!userEmail || !courseId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+      return await getFirestoreCourseProgress(userEmail, courseId);
+    } catch (error) {
+      console.error('Error getting course progress:', error);
+      return { success: false, error: 'Грешка при получаване на прогрес по курс' };
+    }
+  };
+  
+  /**
+   * Стартиране на видео
+   */
+  export const startVideo = async (userEmail, courseId, videoId) => {
+    try {
+      if (!userEmail || !courseId || !videoId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
+      const result = await recordVideoWatch(userEmail, courseId, videoId);
+      return result;
+    } catch (error) {
+      console.error('Error starting video:', error);
+      return { success: false, error: 'Грешка при стартиране на видео' };
+    }
+  };
+  
+  /**
+   * Завършване на видео
+   */
+  export const completeVideo = async (userEmail, courseId, videoId) => {
+    try {
+      if (!userEmail || !courseId || !videoId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
+      const result = await markVideoAsCompleted(userEmail, courseId, videoId);
+      return result;
+    } catch (error) {
+      console.error('Error completing video:', error);
+      return { success: false, error: 'Грешка при завършване на видео' };
+    }
+  };
+  
+  /**
+   * Получаване на завършени видеа за курс
+   */
+  export const getUserCompletedVideos = async (userEmail, courseId) => {
+    try {
+      if (!userEmail || !courseId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+      return await getCompletedVideos(userEmail, courseId);
+    } catch (error) {
+      console.error('Error getting completed videos:', error);
+      return { success: false, error: 'Грешка при получаване на завършени видеа' };
+    }
+  };
+  
+  // ============= СЕСИИ =============
+  
+  /**
+   * Приключване на потребителска сесия
+   */
+  export const logoutUser = async (userEmail) => {
+    try {
+      if (!userEmail) {
+        return { success: false, error: 'Невалиден email' };
+      }
+      await endUserSession(userEmail);
+      return { success: true };
+    } catch (error) {
+      console.error('Error logging out user:', error);
+      return { success: false, error: 'Грешка при излизане' };
     }
   };
   
@@ -554,6 +433,7 @@ import {
    * Извличане на display name от email
    */
   const getDisplayNameFromEmail = (email) => {
+    if (!email || !email.includes('@')) return 'Потребител';
     return email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
   };
   
@@ -561,7 +441,7 @@ import {
    * Намиране на най-гледания курс
    */
   const getMostWatchedCourse = (videoProgress) => {
-    if (!videoProgress.length) return null;
+    if (!videoProgress || !videoProgress.length) return null;
     
     const courseCounts = videoProgress.reduce((acc, video) => {
       acc[video.courseId] = (acc[video.courseId] || 0) + 1;
@@ -578,8 +458,8 @@ import {
    */
   const getLastActivity = (sessions, videoProgress) => {
     const allActivities = [
-      ...sessions.map(s => ({ type: 'session', date: s.loginAt })),
-      ...videoProgress.map(v => ({ type: 'video', date: v.watchedAt }))
+      ...(sessions || []).map(s => ({ type: 'session', date: s.loginAt })),
+      ...(videoProgress || []).map(v => ({ type: 'video', date: v.watchedAt }))
     ];
     
     if (!allActivities.length) return null;
@@ -602,72 +482,9 @@ import {
   export const getRoleInfo = (role) => {
     return ROLE_DEFINITIONS[role] || ROLE_DEFINITIONS[ROLES.GUEST];
   };
-
-  // ============= СТАРА ФУНКЦИЯ ЗА СЪВМЕСТИМОСТ =============
-  
-  /**
-   * Създаване на демо потребители само във Firestore (стара версия)
-   */
-  export const createDemoUsers = async () => {
-    console.log('⚠️ ВАЖНО: Използвате старата функция createDemoUsers()');
-    console.log('🔄 Препоръчваме да използвате createDemoUsersWithAuth() за пълно създаване');
-    
-    const demoUsers = [
-      {
-        email: 'admin@iru.bg',
-        displayName: 'Администратор',
-        role: ROLES.ADMIN,
-        courses: ['basic', 'intermediate', 'advanced', 'expert']
-      },
-      {
-        email: 'teacher@iru.bg',
-        displayName: 'Преподавател',
-        role: ROLES.TEACHER,
-        courses: ['basic', 'intermediate', 'advanced']
-      },
-      {
-        email: 'student@iru.bg',
-        displayName: 'Студент',
-        role: ROLES.STUDENT,
-        courses: ['basic']
-      },
-      {
-        email: 'student2@iru.bg',
-        displayName: 'Напреднал студент',
-        role: ROLES.STUDENT,
-        courses: ['basic', 'intermediate']
-      }
-    ];
-
-    console.log('🚀 Създаване на демо потребители само във Firestore...');
-    
-    for (const user of demoUsers) {
-      try {
-        const result = await createUserProfile(user.email, user);
-        if (result.success) {
-          console.log(`✅ Създаден демо потребител във Firestore: ${user.email}`);
-        } else {
-          console.log(`⚠️ Потребител ${user.email} вече съществува или има грешка`);
-        }
-      } catch (error) {
-        console.error(`❌ Грешка при създаване на ${user.email}:`, error);
-      }
-    }
-    
-    console.log('\n⚠️ ЗАБЕЛЕЖКА: Тези потребители са създадени само във Firestore!');
-    console.log('🔐 Трябва ръчно да ги създадете в Firebase Authentication или');
-    console.log('🔄 Използвайте createDemoUsersWithAuth() за автоматично създаване');
-    
-    console.log('✅ Демо потребителите са готови!');
-  };
   
   // Експортиране на всички функции
   export default {
-    // Нови функции за създаване с Auth
-    createNewUser,
-    createDemoUsersWithAuth,
-    adminCreateUser,
-    
     // Основни функции
     initializeUser,
     getFullUserProfile,
@@ -675,25 +492,21 @@ import {
     hasPermission,
     logoutUser,
     
-    // Курсове
-    enrollUserInCourse,
-    getCourseProgress,
-    getAllCourseProgress,
-    
-    // Видеа
-    startVideo,
-    completeVideo,
-    getUserCompletedVideos,
-    
     // Административни
+    adminCreateUser,
     addCourseAccessToUser,
     removeCourseAccessFromUser,
     getAdminUsersList,
     getUserDetailedStats,
     
-    // Демо (двете версии)
-    createDemoUsers, // Стара версия - само Firestore
-    createDemoUsersWithAuth, // Нова версия - Auth + Firestore
+    // Курсове
+    enrollUserInCourse,
+    getCourseProgress,
+    
+    // Видеа
+    startVideo,
+    completeVideo,
+    getUserCompletedVideos,
     
     // Помощни
     getRoleInfo,
