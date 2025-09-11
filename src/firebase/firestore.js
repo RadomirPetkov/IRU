@@ -351,26 +351,87 @@ export const endUserSession = async (userEmail) => {
 // Получаване на всички потребители (за админи)
 export const getAllUsers = async () => {
   try {
+    console.log('🔍 Търсене на потребители в Firestore...');
+    
+    // Получаваме всички колекции 'users'
     const usersRef = collection(db, 'users');
     const snapshot = await getDocs(usersRef);
     
+    console.log('📊 Намерени user документи:', snapshot.docs.length);
+    
     const users = [];
+    
+    // За всеки потребител, получаваме профила и правата
     for (const userDoc of snapshot.docs) {
       const userEmail = userDoc.id;
-      const profile = await getUserProfile(userEmail);
-      if (profile.success) {
-        users.push({
-          email: userEmail,
-          ...profile.data
-        });
+      console.log(`📁 Обработване на потребител: ${userEmail}`);
+      
+      try {
+        // Получаваме профила
+        const profileRef = doc(db, 'users', userEmail, 'profile', 'info');
+        const profileSnap = await getDoc(profileRef);
+        
+        // Получаваме правата
+        const permissionsRef = doc(db, 'users', userEmail, 'permissions', 'access');
+        const permissionsSnap = await getDoc(permissionsRef);
+        
+        if (profileSnap.exists()) {
+          const profileData = profileSnap.data();
+          const permissionsData = permissionsSnap.exists() ? permissionsSnap.data() : { courses: [], customPermissions: [] };
+          
+          // Комбинираме данните
+          const userData = {
+            email: userEmail,
+            ...profileData,
+            permissions: permissionsData,
+            // Добавяме roleInfo
+            roleInfo: getRoleInfo(profileData.role)
+          };
+          
+          users.push(userData);
+          console.log(`✅ Зареден потребител: ${userEmail} (${profileData.role})`);
+        } else {
+          console.log(`⚠️ Няма профил за ${userEmail}`);
+        }
+      } catch (error) {
+        console.error(`❌ Грешка при зареждане на ${userEmail}:`, error);
       }
     }
 
+    console.log(`✅ Общо заредени потребители: ${users.length}`);
     return { success: true, data: users };
   } catch (error) {
     console.error('❌ Грешка при получаване на потребители:', error);
     return { success: false, error: error.message };
   }
+};
+
+// Помощна функция за получаване на роля информация
+const getRoleInfo = (role) => {
+  const ROLE_DEFINITIONS = {
+    'admin': {
+      name: 'Администратор',
+      color: 'bg-red-100 text-red-800',
+      permissions: ['view_all_courses', 'manage_users', 'manage_content', 'view_analytics'],
+    },
+    'teacher': {
+      name: 'Преподавател',
+      color: 'bg-green-100 text-green-800',
+      permissions: ['view_courses', 'manage_content', 'view_student_progress'],
+    },
+    'student': {
+      name: 'Студент',
+      color: 'bg-blue-100 text-blue-800',
+      permissions: ['view_assigned_courses', 'track_progress'],
+    },
+    'guest': {
+      name: 'Гост',
+      color: 'bg-gray-100 text-gray-800',
+      permissions: ['view_public_content'],
+    }
+  };
+  
+  return ROLE_DEFINITIONS[role] || ROLE_DEFINITIONS['guest'];
 };
 
 // Получаване на статистики за активност

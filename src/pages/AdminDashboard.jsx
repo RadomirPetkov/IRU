@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Централизирана логика
+// src/pages/AdminDashboard.jsx - Debug версия
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
@@ -15,7 +15,8 @@ import {
   Minus,
   ArrowLeft,
   BarChart3,
-  Activity
+  Activity,
+  AlertCircle
 } from 'lucide-react';
 import {
   getAdminUsersList,
@@ -29,35 +30,96 @@ import { courses } from '../data/coursesData';
 import AdminUserCreation from '../components/AdminUserCreation';
 
 const AdminDashboard = () => {
-  const { isAuthenticated, hasPermission, user } = useAuth();
+  const { isAuthenticated, hasPermission, user, userProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({});
+  const [error, setError] = useState(null);
 
-  // Move all hooks to the top, before any early returns
+  // Debug logging
   useEffect(() => {
-    loadUsers();
-  }, []);
+    console.log('🐛 Admin Dashboard Debug Info:');
+    console.log('User:', user?.email);
+    console.log('UserProfile:', userProfile);
+    console.log('Has permission:', hasPermission);
+    console.log('Is authenticated:', isAuthenticated);
+    
+    setDebugInfo({
+      userEmail: user?.email,
+      role: userProfile?.role,
+      roleInfo: userProfile?.roleInfo?.name,
+      permissions: userProfile?.roleInfo?.permissions,
+      hasViewAnalytics: hasPermission ? hasPermission('view_analytics') : false
+    });
+  }, [user, userProfile, hasPermission, isAuthenticated]);
 
-  // Проверка за админ права - moved after hooks
-  if (!isAuthenticated || !hasPermission('view_analytics')) {
-    return <Navigate to="/courses" replace />;
-  }
+  useEffect(() => {
+    if (isAuthenticated && user?.email) {
+      loadUsers();
+    }
+  }, [isAuthenticated, user?.email]);
+
+  // Проверка за админ права с debug
+  const checkAdminAccess = () => {
+    console.log('🔐 Checking admin access...');
+    console.log('Is authenticated:', isAuthenticated);
+    console.log('Has permission function:', typeof hasPermission);
+    console.log('User profile:', userProfile);
+    
+    if (!isAuthenticated) {
+      console.log('❌ Not authenticated');
+      return false;
+    }
+    
+    if (!hasPermission) {
+      console.log('❌ No hasPermission function');
+      return false;
+    }
+    
+    const hasAnalytics = hasPermission('view_analytics');
+    console.log('Has view_analytics permission:', hasAnalytics);
+    
+    return hasAnalytics;
+  };
 
   const loadUsers = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      const result = await getAdminUsersList(user?.email);
-      if (result.success) {
-        setUsers(result.data);
+      console.log('🔄 Loading users with admin email:', user?.email);
+      
+      // Debug: Опитваме се да заредим директно от Firestore
+      const { getAllUsers } = await import('../firebase/firestore');
+      const directResult = await getAllUsers();
+      
+      console.log('📊 Direct Firestore result:', directResult);
+      
+      if (directResult.success) {
+        console.log('✅ Found users directly:', directResult.data.length);
+        setUsers(directResult.data);
       } else {
-        console.error('⚠ Грешка при зареждане на потребители:', result.error);
+        console.log('⚠️ No direct users found, trying service...');
+        
+        // Опитваме се през сервиса
+        const result = await getAdminUsersList(user?.email);
+        console.log('📊 Service result:', result);
+        
+        if (result.success) {
+          setUsers(result.data);
+          console.log('✅ Users loaded via service:', result.data.length);
+        } else {
+          setError(result.error);
+          console.error('❌ Error loading users:', result.error);
+        }
       }
     } catch (error) {
-      console.error('⚠ Грешка при зареждане на потребители:', error);
+      console.error('❌ Exception loading users:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -145,6 +207,42 @@ const AdminDashboard = () => {
     return { totalUsers, activeUsers, roleStats };
   };
 
+  // Проверяваме достъпа
+  if (!isAuthenticated) {
+    return <Navigate to="/courses" replace />;
+  }
+
+  if (!checkAdminAccess()) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="container mx-auto px-4 max-w-[1500px] py-16">
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <AlertCircle className="text-red-500 mx-auto mb-4" size={64} />
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Няма достъп</h2>
+            <p className="text-gray-600 mb-6">
+              Нямате права за достъп до административния панел
+            </p>
+            
+            {/* Debug информация */}
+            <div className="bg-gray-100 rounded-lg p-4 text-left text-sm">
+              <h3 className="font-semibold mb-2">Debug информация:</h3>
+              <pre className="text-xs overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+            
+            <Link 
+              to="/courses" 
+              className="inline-block mt-6 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Обратно към курсовете
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const overallStats = getOverallStats();
 
   if (loading) {
@@ -153,6 +251,16 @@ const AdminDashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Зареждане на администраторския панел...</p>
+          
+          {/* Debug информация при зареждане */}
+          <div className="mt-4 bg-gray-100 rounded-lg p-4 text-left text-sm max-w-md">
+            <h3 className="font-semibold mb-2">Debug информация:</h3>
+            <div className="text-xs">
+              <div>Email: {user?.email}</div>
+              <div>Role: {userProfile?.role}</div>
+              <div>Loading: {loading ? 'да' : 'не'}</div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -186,9 +294,16 @@ const AdminDashboard = () => {
             <div>
               <h1 className="text-4xl font-bold mb-4">Административен панел</h1>
               <p className="text-xl text-indigo-100">Управление на потребители и статистики</p>
+              
+              {/* Debug информация в header */}
+              <div className="mt-4 bg-white bg-opacity-10 rounded-lg p-3 text-sm">
+                <div>Потребители в базата: {users.length}</div>
+                <div>Вашата роля: {userProfile?.roleInfo?.name}</div>
+                <div>Email: {user?.email}</div>
+                {error && <div className="text-red-300">Грешка: {error}</div>}
+              </div>
             </div>
             
-            {/* Бутон за създаване на потребител */}
             <button
               onClick={() => setShowCreateUser(true)}
               className="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-200 flex items-center shadow-lg transform hover:scale-105"
@@ -262,38 +377,76 @@ const AdminDashboard = () => {
                 <div className="p-6 bg-gray-50 border-b">
                   <h2 className="text-xl font-bold text-gray-800 flex items-center">
                     <Users className="mr-2" size={24} />
-                    Потребители
+                    Потребители ({users.length})
                   </h2>
                 </div>
                 
-                <div className="max-h-96 overflow-y-auto">
-                  {users.map((userData) => {
-                    const roleInfo = ROLE_DEFINITIONS[userData.role] || ROLE_DEFINITIONS[ROLES.GUEST];
-                    return (
-                      <div
-                        key={userData.email}
-                        onClick={() => handleUserSelect(userData)}
-                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                          selectedUser?.email === userData.email ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                        }`}
+                {users.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Users className="text-gray-400 mx-auto mb-4" size={48} />
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      Няма потребители
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Все още няма създадени потребители в системата.
+                    </p>
+                    <button
+                      onClick={() => setShowCreateUser(true)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Създай първия потребител
+                    </button>
+                    
+                    {/* Debug бутони */}
+                    <div className="mt-6 p-4 bg-gray-100 rounded-lg">
+                      <h4 className="font-semibold mb-2">Debug опции:</h4>
+                      <button
+                        onClick={loadUsers}
+                        className="mr-2 bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-800">{userData.displayName}</h3>
-                            <p className="text-sm text-gray-600">{userData.email}</p>
-                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${roleInfo.color} mt-1`}>
-                              {roleInfo.name}
-                            </span>
-                          </div>
-                          <div className="text-right text-sm text-gray-500">
-                            <div>{userData.permissions?.courses?.length || 0} курса</div>
-                            <div className={`w-2 h-2 rounded-full mt-1 ml-auto ${userData.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                        Презареди потребители
+                      </button>
+                      <button
+                        onClick={() => {
+                          console.log('🐛 Current state:', { users, loading, error });
+                          console.log('🐛 User profile:', userProfile);
+                        }}
+                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
+                      >
+                        Покажи в конзолата
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto">
+                    {users.map((userData) => {
+                      const roleInfo = ROLE_DEFINITIONS[userData.role] || ROLE_DEFINITIONS[ROLES.GUEST];
+                      return (
+                        <div
+                          key={userData.email}
+                          onClick={() => handleUserSelect(userData)}
+                          className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                            selectedUser?.email === userData.email ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-800">{userData.displayName}</h3>
+                              <p className="text-sm text-gray-600">{userData.email}</p>
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${roleInfo.color} mt-1`}>
+                                {roleInfo.name}
+                              </span>
+                            </div>
+                            <div className="text-right text-sm text-gray-500">
+                              <div>{userData.permissions?.courses?.length || 0} курса</div>
+                              <div className={`w-2 h-2 rounded-full mt-1 ml-auto ${userData.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
