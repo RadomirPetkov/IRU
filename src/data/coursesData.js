@@ -1,227 +1,315 @@
-// src/data/coursesData.js
-export const courses = [
-    {
-      id: 'basic',
-      title: 'Цифрова компетентност - Базово ниво',
-      description: 'Основни умения за работа с компютър и интернет',
-      level: 1,
-      color: 'from-green-500 to-green-600',
-      icon: '📱',
-      prerequisite: null, // Няма предварителни изисквания
-      estimatedHours: 8,
-      videos: [
-        {
-          id: 'basic-1',
-          title: 'Въведение в компютрите',
-          url: 'https://www.youtube.com/watch?v=example1',
-          description: 'Основни понятия за хардуер и софтуер. Какво е компютър и как работи.',
-          duration: '15:30',
-          order: 1
-        },
-        {
-          id: 'basic-2',
-          title: 'Работа с операционна система',
-          url: 'https://www.youtube.com/watch?v=example2',
-          description: 'Навигация във Windows, файлове и папки, основни настройки.',
-          duration: '22:45',
-          order: 2
-        },
-        {
-          id: 'basic-3',
-          title: 'Основи на интернет браузърите',
-          url: 'https://www.youtube.com/watch?v=example3',
-          description: 'Как да сърфираме безопасно в интернет, търсачки и социални мрежи.',
-          duration: '18:20',
-          order: 3
-        },
-        {
-          id: 'basic-4',
-          title: 'Електронна поща и комуникация',
-          url: 'https://www.youtube.com/watch?v=example4',
-          description: 'Създаване и управление на имейл акаунт, етикет в електронната комуникация.',
-          duration: '20:15',
-          order: 4
-        }
-      ]
-    },
-    {
-      id: 'intermediate',
-      title: 'Цифрова компетентност - Средно ниво',
-      description: 'Напреднали умения за офис приложения и електронна комуникация',
-      level: 2,
-      color: 'from-blue-500 to-blue-600',
-      icon: '💼',
-      prerequisite: 'basic', // Изисква завършване на базовото ниво
-      estimatedHours: 12,
-      videos: [
-        {
-          id: 'intermediate-1',
-          title: 'Microsoft Word - Напреднали функции',
-          url: 'https://www.youtube.com/watch?v=example5',
-          description: 'Стилове, шаблони, съвместна работа и рецензиране на документи.',
-          duration: '25:10',
-          order: 1
-        },
-        {
-          id: 'intermediate-2',
-          title: 'Excel за бизнес',
-          url: 'https://www.youtube.com/watch?v=example6',
-          description: 'Формули, функции, графики и анализ на данни в Excel.',
-          duration: '30:15',
-          order: 2
-        },
-        {
-          id: 'intermediate-3',
-          title: 'PowerPoint презентации',
-          url: 'https://www.youtube.com/watch?v=example7',
-          description: 'Професионални презентации с анимации и интерактивни елементи.',
-          duration: '20:40',
-          order: 3
-        },
-        {
-          id: 'intermediate-4',
-          title: 'Облачни технологии',
-          url: 'https://www.youtube.com/watch?v=example8',
-          description: 'Google Drive, OneDrive, споделяне и синхронизация на файлове.',
-          duration: '18:30',
-          order: 4
-        }
-      ]
-    },
-    {
-      id: 'advanced',
-      title: 'Цифрова компетентност - Напреднало ниво',
-      description: 'Специализирани умения за дигитален маркетинг и автоматизация',
-      level: 3,
-      color: 'from-purple-500 to-purple-600',
-      icon: '🚀',
-      prerequisite: 'intermediate', // Изисква завършване на средното ниво
-      estimatedHours: 16,
-      videos: [
-        {
-          id: 'advanced-1',
-          title: 'Дигитален маркетинг основи',
-          url: 'https://www.youtube.com/watch?v=example9',
-          description: 'SEO, социални мрежи и онлайн реклама. Стратегии за дигитално присъствие.',
-          duration: '35:20',
-          order: 1
-        },
-        {
-          id: 'advanced-2',
-          title: 'Автоматизация на процесите',
-          url: 'https://www.youtube.com/watch?v=example10',
-          description: 'Използване на инструменти за автоматизация, Zapier, IFTTT.',
-          duration: '28:30',
-          order: 2
-        },
-        {
-          id: 'advanced-3',
-          title: 'Анализ на данни',
-          url: 'https://www.youtube.com/watch?v=example11',
-          description: 'Google Analytics, бизнес аналитика и вземане на решения на база данни.',
-          duration: '32:15',
-          order: 3
-        },
-        {
-          id: 'advanced-4',
-          title: 'Проектно управление',
-          url: 'https://www.youtube.com/watch?v=example12',
-          description: 'Дигитални инструменти за управление на проекти - Trello, Asana, Monday.',
-          duration: '26:45',
-          order: 4
-        }
-      ]
-    },
-    {
-      id: 'expert',
-      title: 'Цифрова компетентност - Високоспециализирано ниво',
-      description: 'Експертни знания за програмиране и системна администрация',
-      level: 4,
-      color: 'from-red-500 to-red-600',
-      icon: '🎯',
-      prerequisite: 'advanced', // Изисква завършване на напредналото ниво
-      estimatedHours: 20,
-      videos: [
-        {
-          id: 'expert-1',
-          title: 'Основи на програмирането',
-          url: 'https://www.youtube.com/watch?v=example13',
-          description: 'Въведение в Python и JavaScript, основни алгоритми и структури данни.',
-          duration: '45:30',
-          order: 1
-        },
-        {
-          id: 'expert-2',
-          title: 'Системна администрация',
-          url: 'https://www.youtube.com/watch?v=example14',
-          description: 'Управление на сървъри, мрежи и операционни системи.',
-          duration: '40:20',
-          order: 2
-        },
-        {
-          id: 'expert-3',
-          title: 'Кибер сигурност за експерти',
-          url: 'https://www.youtube.com/watch?v=example15',
-          description: 'Напреднали техники за защита, пентестинг и инцидентен отговор.',
-          duration: '38:45',
-          order: 3
-        },
-        {
-          id: 'expert-4',
-          title: 'Облачна архитектура',
-          url: 'https://www.youtube.com/watch?v=example16',
-          description: 'AWS, Azure, Docker, Kubernetes и модерни DevOps практики.',
-          duration: '42:15',
-          order: 4
-        }
-      ]
-    }
-  ];
-  
-  // Функция за получаване на курс по ID
-  export const getCourseById = (courseId) => {
-    return courses.find(course => course.id === courseId);
-  };
-  
-  // Функция за получаване на всички курсове
-  export const getAllCourses = () => {
-    return courses;
-  };
-  
-  // Функция за получаване на курсове по ниво
-  export const getCoursesByLevel = (level) => {
-    return courses.filter(course => course.level === level);
-  };
-  
-  // Функция за получаване на предварителните изисквания
-  export const getPrerequisites = (courseId) => {
-    const course = getCourseById(courseId);
-    if (!course || !course.prerequisite) return [];
+// src/data/coursesData.js - Обновена версия с Firestore интеграция
+import { 
+  getAllCourses as getFirestoreCourses,
+  getCourse as getFirestoreCourse 
+} from '../firebase/courses';
+
+// Кеш за курсовете
+let coursesCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 минути
+
+// Фолбек статични курсове (ако Firestore не е достъпен)
+const fallbackCourses = [
+  {
+    id: 'basic',
+    title: 'Цифрова компетентност - Базово ниво',
+    description: 'Основни умения за работа с компютър и интернет',
+    level: 1,
+    color: 'from-green-500 to-green-600',
+    icon: '📱',
+    prerequisite: null,
+    estimatedHours: 8,
+    isActive: true,
+    videos: [
+      {
+        id: 'basic-1',
+        title: 'Въведение в компютрите',
+        url: 'https://www.youtube.com/watch?v=example1',
+        description: 'Основни понятия за хардуер и софтуер. Какво е компютър и как работи.',
+        duration: '15:30',
+        order: 1,
+        category: 'Базово ниво'
+      },
+      {
+        id: 'basic-2',
+        title: 'Работа с операционна система',
+        url: 'https://www.youtube.com/watch?v=example2',
+        description: 'Навигация във Windows, файлове и папки, основни настройки.',
+        duration: '22:45',
+        order: 2,
+        category: 'Базово ниво'
+      },
+      {
+        id: 'basic-3',
+        title: 'Основи на интернет браузърите',
+        url: 'https://www.youtube.com/watch?v=example3',
+        description: 'Как да сърфираме безопасно в интернет, търсачки и социални мрежи.',
+        duration: '18:20',
+        order: 3,
+        category: 'Базово ниво'
+      },
+      {
+        id: 'basic-4',
+        title: 'Електронна поща и комуникация',
+        url: 'https://www.youtube.com/watch?v=example4',
+        description: 'Създаване и управление на имейл акаунт, етикет в електронната комуникация.',
+        duration: '20:15',
+        order: 4,
+        category: 'Базово ниво'
+      }
+    ]
+  },
+  {
+    id: 'intermediate',
+    title: 'Цифрова компетентност - Средно ниво',
+    description: 'Напреднали умения за офис приложения и електронна комуникация',
+    level: 2,
+    color: 'from-blue-500 to-blue-600',
+    icon: '💼',
+    prerequisite: 'basic',
+    estimatedHours: 12,
+    isActive: true,
+    videos: [
+      {
+        id: 'intermediate-1',
+        title: 'Microsoft Word - Напреднали функции',
+        url: 'https://www.youtube.com/watch?v=example5',
+        description: 'Стилове, шаблони, съвместна работа и рецензиране на документи.',
+        duration: '25:10',
+        order: 1,
+        category: 'Средно ниво'
+      },
+      {
+        id: 'intermediate-2',
+        title: 'Excel за бизнес',
+        url: 'https://www.youtube.com/watch?v=example6',
+        description: 'Формули, функции, графики и анализ на данни в Excel.',
+        duration: '30:15',
+        order: 2,
+        category: 'Средно ниво'
+      },
+      {
+        id: 'intermediate-3',
+        title: 'PowerPoint презентации',
+        url: 'https://www.youtube.com/watch?v=example7',
+        description: 'Професионални презентации с анимации и интерактивни елементи.',
+        duration: '20:40',
+        order: 3,
+        category: 'Средно ниво'
+      },
+      {
+        id: 'intermediate-4',
+        title: 'Облачни технологии',
+        url: 'https://www.youtube.com/watch?v=example8',
+        description: 'Google Drive, OneDrive, споделяне и синхронизация на файлове.',
+        duration: '18:30',
+        order: 4,
+        category: 'Средно ниво'
+      }
+    ]
+  }
+];
+
+/**
+ * Получаване на всички курсове (с кеш)
+ */
+export const courses = async () => {
+  // Проверяваме кеша
+  if (coursesCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+    return coursesCache;
+  }
+
+  try {
+    console.log('🔄 Зареждане на курсове от Firestore...');
+    const result = await getFirestoreCourses();
     
-    const prerequisiteCourse = getCourseById(course.prerequisite);
-    return prerequisiteCourse ? [prerequisiteCourse] : [];
-  };
+    if (result.success && result.data.length > 0) {
+      // Филтрираме само активните курсове
+      const activeCourses = result.data.filter(course => course.isActive !== false);
+      
+      // Сортираме видеата във всеки курс по order
+      const sortedCourses = activeCourses.map(course => ({
+        ...course,
+        videos: (course.videos || []).sort((a, b) => (a.order || 0) - (b.order || 0))
+      }));
+      
+      // Актуализираме кеша
+      coursesCache = sortedCourses;
+      cacheTimestamp = Date.now();
+      
+      console.log(`✅ Заредени ${sortedCourses.length} курса от Firestore`);
+      return sortedCourses;
+    } else {
+      console.log('⚠️ Няма курсове в Firestore, използваме fallback данни');
+      return fallbackCourses;
+    }
+  } catch (error) {
+    console.error('❌ Грешка при зареждане от Firestore:', error);
+    console.log('🔄 Използваме fallback данни');
+    return fallbackCourses;
+  }
+};
+
+/**
+ * Получаване на курс по ID
+ */
+export const getCourseById = async (courseId) => {
+  try {
+    // Първо опитваме от Firestore
+    const result = await getFirestoreCourse(courseId);
+    
+    if (result.success) {
+      // Сортираме видеата по order
+      const course = {
+        ...result.data,
+        videos: (result.data.videos || []).sort((a, b) => (a.order || 0) - (b.order || 0))
+      };
+      return course;
+    }
+    
+    // Fallback към статичните данни
+    const fallbackCourse = fallbackCourses.find(course => course.id === courseId);
+    return fallbackCourse || null;
+  } catch (error) {
+    console.error('Грешка при получаване на курс:', error);
+    
+    // Fallback към статичните данни
+    const fallbackCourse = fallbackCourses.find(course => course.id === courseId);
+    return fallbackCourse || null;
+  }
+};
+
+/**
+ * Синхронен достъп до кешираните курсове
+ */
+export const getCachedCourses = () => {
+  if (coursesCache) {
+    return coursesCache;
+  }
   
-  // Функция за проверка дали курсът има предварителни изисквания
-  export const hasPrerequisites = (courseId) => {
-    const course = getCourseById(courseId);
-    return course && course.prerequisite;
-  };
+  // Ако няма кеш, връщаме fallback данните
+  return fallbackCourses;
+};
+
+/**
+ * Изчистване на кеша (за принудително презареждане)
+ */
+export const clearCoursesCache = () => {
+  coursesCache = null;
+  cacheTimestamp = null;
+  console.log('🗑️ Кешът на курсовете е изчистен');
+};
+
+/**
+ * Получаване на всички курсове синхронно (за съвместимост)
+ */
+export const getAllCourses = () => {
+  // За backward compatibility
+  return getCachedCourses();
+};
+
+/**
+ * Получаване на курсове по ниво
+ */
+export const getCoursesByLevel = async (level) => {
+  const allCourses = await courses();
+  return allCourses.filter(course => course.level === level);
+};
+
+/**
+ * Получаване на предварителните изисквания
+ */
+export const getPrerequisites = async (courseId) => {
+  const course = await getCourseById(courseId);
+  if (!course || !course.prerequisite) return [];
   
-  // Функция за получаване на статистики за курсовете
-  export const getCoursesStats = () => {
-    const totalVideos = courses.reduce((sum, course) => sum + course.videos.length, 0);
-    const totalHours = courses.reduce((sum, course) => sum + course.estimatedHours, 0);
-    const averageVideosPerCourse = totalVideos / courses.length;
+  const prerequisiteCourse = await getCourseById(course.prerequisite);
+  return prerequisiteCourse ? [prerequisiteCourse] : [];
+};
+
+/**
+ * Проверка дали курсът има предварителни изисквания
+ */
+export const hasPrerequisites = async (courseId) => {
+  const course = await getCourseById(courseId);
+  return course && course.prerequisite;
+};
+
+/**
+ * Получаване на статистики за курсовете
+ */
+export const getCoursesStats = async () => {
+  try {
+    const allCourses = await courses();
+    const totalVideos = allCourses.reduce((sum, course) => sum + (course.videos?.length || 0), 0);
+    const totalHours = allCourses.reduce((sum, course) => sum + (course.estimatedHours || 0), 0);
+    const averageVideosPerCourse = allCourses.length > 0 ? totalVideos / allCourses.length : 0;
     
     return {
-      totalCourses: courses.length,
+      totalCourses: allCourses.length,
       totalVideos,
       totalHours,
       averageVideosPerCourse: Math.round(averageVideosPerCourse * 10) / 10,
-      coursesByLevel: courses.reduce((acc, course) => {
+      coursesByLevel: allCourses.reduce((acc, course) => {
         acc[`level${course.level}`] = (acc[`level${course.level}`] || 0) + 1;
         return acc;
-      }, {})
+      }, {}),
+      lastUpdated: new Date().toISOString()
     };
-  };
+  } catch (error) {
+    console.error('Грешка при получаване на статистики:', error);
+    return {
+      totalCourses: 0,
+      totalVideos: 0,
+      totalHours: 0,
+      averageVideosPerCourse: 0,
+      coursesByLevel: {},
+      lastUpdated: new Date().toISOString()
+    };
+  }
+};
+
+/**
+ * Проверка дали има нови курсове в Firestore
+ */
+export const checkForUpdates = async () => {
+  try {
+    const result = await getFirestoreCourses();
+    if (result.success) {
+      const firestoreCount = result.data.filter(c => c.isActive !== false).length;
+      const cacheCount = coursesCache ? coursesCache.length : 0;
+      
+      return {
+        hasUpdates: firestoreCount !== cacheCount,
+        firestoreCount,
+        cacheCount
+      };
+    }
+    return { hasUpdates: false, firestoreCount: 0, cacheCount: 0 };
+  } catch (error) {
+    return { hasUpdates: false, error: error.message };
+  }
+};
+
+/**
+ * Форсирано презареждане на курсовете
+ */
+export const reloadCourses = async () => {
+  clearCoursesCache();
+  return await courses();
+};
+
+// Експортираме основните функции за обратна съвместимост
+export default {
+  courses,
+  getCourseById,
+  getAllCourses,
+  getCoursesByLevel,
+  getPrerequisites,
+  hasPrerequisites,
+  getCoursesStats,
+  clearCoursesCache,
+  checkForUpdates,
+  reloadCourses
+};

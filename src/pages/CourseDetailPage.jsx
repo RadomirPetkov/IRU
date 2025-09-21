@@ -1,4 +1,4 @@
-// src/pages/CourseDetailPage.jsx - Поправен с правилни React Hooks
+// src/pages/CourseDetailPage.jsx - Обновена версия с динамично зареждане
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,9 +16,11 @@ import {
   TrendingUp,
   User,
   Target,
-  PlayCircle
+  PlayCircle,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
-import { getCourseById } from '../data/coursesData';
+import { getCourseById, reloadCourses } from '../data/coursesData';
 import { 
   enrollUserInCourse,
   getCourseProgress,
@@ -30,22 +32,26 @@ import {
 const CourseDetailPage = () => {
   const { courseId } = useParams();
   const { isAuthenticated, user, hasAccessToCourse, userProfile } = useAuth();
+  const [course, setCourse] = useState(null);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
   const [completedVideos, setCompletedVideos] = useState(new Set());
   const [courseProgress, setCourseProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
-
-  // Намираме курса
-  const course = getCourseById(courseId);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   // Зареждане на данни при монтиране на компонента
   useEffect(() => {
-    if (user?.email && course) {
-      loadCourseData();
+    loadCourseData();
+  }, [courseId]);
+
+  useEffect(() => {
+    if (user?.email && course && !loading) {
+      loadUserProgress();
     }
-  }, [courseId, user?.email, course]);
+  }, [courseId, user?.email, course, loading]);
 
   // Проследяване на стартиране на видео
   useEffect(() => {
@@ -56,28 +62,36 @@ const CourseDetailPage = () => {
       }
     }
   }, [selectedVideoIndex, user?.email, loading, course]);
-  
-  // Проверяваме достъпа - СЛЕД hooks
-  if (!isAuthenticated) {
-    return <Navigate to="/courses" replace />;
-  }
-
-  if (!course) {
-    return <Navigate to="/courses" replace />;
-  }
-
-  if (!hasAccessToCourse(courseId)) {
-    return <Navigate to="/courses" replace />;
-  }
-
-  const selectedVideo = course.videos[selectedVideoIndex];
 
   const loadCourseData = async () => {
-    if (!user?.email) return;
-    
     setLoading(true);
+    setError(null);
+    
     try {
-      console.log(`📚 Зареждане на данни за курс ${courseId}...`);
+      console.log(`📚 Зареждане на курс ${courseId}...`);
+      const courseData = await getCourseById(courseId);
+      
+      if (courseData) {
+        setCourse(courseData);
+        console.log(`✅ Курс зареден: ${courseData.title}`);
+        console.log(`📹 Видеа в курса: ${courseData.videos?.length || 0}`);
+      } else {
+        setError('Курсът не съществува');
+        console.error(`❌ Курс с ID ${courseId} не е намерен`);
+      }
+    } catch (error) {
+      console.error('❌ Грешка при зареждане на курс:', error);
+      setError('Грешка при зареждане на курс');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserProgress = async () => {
+    if (!user?.email || !course) return;
+    
+    try {
+      console.log(`📊 Зареждане на прогреса за курс ${courseId}...`);
       
       // Получаваме прогреса по курса
       const progressResult = await getCourseProgress(user.email, courseId);
@@ -89,7 +103,7 @@ const CourseDetailPage = () => {
         console.log('📝 Няма прогрес по курса. Записване на потребител...');
         // Ако няма прогрес, записваме потребителя в курса
         setEnrolling(true);
-        const enrollResult = await enrollUserInCourse(user.email, courseId, course.videos.length);
+        const enrollResult = await enrollUserInCourse(user.email, courseId, course.videos?.length || 0);
         
         if (enrollResult.success) {
           console.log('✅ Потребителят е записан в курса успешно');
@@ -117,8 +131,28 @@ const CourseDetailPage = () => {
       
     } catch (error) {
       console.error('❌ Грешка при зареждане на данни за курса:', error);
+    }
+  };
+
+  const handleRefreshCourse = async () => {
+    setRefreshing(true);
+    setError(null);
+    
+    try {
+      console.log('🔄 Презареждане на курса...');
+      await reloadCourses(); // Изчистваме кеша
+      await loadCourseData(); // Презареждаме курса
+      
+      if (user?.email) {
+        await loadUserProgress(); // Презареждаме и прогреса
+      }
+      
+      console.log('✅ Курсът е презареден успешно');
+    } catch (error) {
+      console.error('❌ Грешка при презареждане на курса:', error);
+      setError('Грешка при презареждане на курса');
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -187,6 +221,7 @@ const CourseDetailPage = () => {
   };
 
   const isVideoCompleted = (videoIndex) => {
+    if (!course?.videos || !course.videos[videoIndex]) return false;
     const video = course.videos[videoIndex];
     return completedVideos.has(video.id);
   };
@@ -195,6 +230,7 @@ const CourseDetailPage = () => {
     if (courseProgress) {
       return courseProgress.progressPercentage || 0;
     }
+    if (!course?.videos) return 0;
     return (completedVideos.size / course.videos.length) * 100;
   };
 
@@ -215,13 +251,18 @@ const CourseDetailPage = () => {
     return isVideoCompleted(selectedVideoIndex);
   };
 
+  // Проверяваме достъпа - СЛЕД hooks
+  if (!isAuthenticated) {
+    return <Navigate to="/courses" replace />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-blue-500 mx-auto mb-6"></div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Зареждане на курса</h3>
-          <p className="text-gray-600">Моля изчакайте, докато заредим вашия прогрес...</p>
+          <p className="text-gray-600">Моля изчакайте, докато заредим курса и вашия прогрес...</p>
           {enrolling && (
             <p className="text-blue-600 mt-2">Записване в курса...</p>
           )}
@@ -230,31 +271,76 @@ const CourseDetailPage = () => {
     );
   }
 
+  if (error || !course) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <AlertCircle className="text-red-500 mx-auto mb-4" size={64} />
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Грешка при зареждане</h3>
+          <p className="text-gray-600 mb-6">{error || 'Курсът не е намерен'}</p>
+          <div className="space-y-3">
+            <button
+              onClick={handleRefreshCourse}
+              disabled={refreshing}
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center mx-auto"
+            >
+              <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Презарежда...' : 'Опитай отново'}
+            </button>
+            <Link
+              to="/courses"
+              className="block bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Обратно към курсовете
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccessToCourse(courseId)) {
+    return <Navigate to="/courses" replace />;
+  }
+
+  const selectedVideo = course.videos?.[selectedVideoIndex];
   const progress = getProgress();
-  const isLastVideo = selectedVideoIndex === course.videos.length - 1;
-  const isCourseCompleted = completedVideos.size === course.videos.length;
+  const isLastVideo = selectedVideoIndex === (course.videos?.length || 0) - 1;
+  const isCourseCompleted = course.videos && completedVideos.size === course.videos.length;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
       {/* Breadcrumb Navigation */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 max-w-[1500px] py-4">
-          <div className="flex items-center space-x-2 text-sm">
-            <Link 
-              to="/" 
-              className="text-gray-600 hover:text-blue-600 transition-colors"
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-sm">
+              <Link 
+                to="/" 
+                className="text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                Начало
+              </Link>
+              <span className="text-gray-400">/</span>
+              <Link 
+                to="/courses" 
+                className="text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                Курсове
+              </Link>
+              <span className="text-gray-400">/</span>
+              <span className="text-gray-800 font-medium">{course.title}</span>
+            </div>
+            
+            <button
+              onClick={handleRefreshCourse}
+              disabled={refreshing}
+              className="flex items-center text-blue-600 hover:text-blue-800 disabled:opacity-50 text-sm"
+              title="Презареди курса"
             >
-              Начало
-            </Link>
-            <span className="text-gray-400">/</span>
-            <Link 
-              to="/courses" 
-              className="text-gray-600 hover:text-blue-600 transition-colors"
-            >
-              Курсове
-            </Link>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-800 font-medium">{course.title}</span>
+              <RefreshCw size={16} className={`mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Презарежда...' : 'Обнови'}
+            </button>
           </div>
         </div>
       </div>
@@ -300,11 +386,11 @@ const CourseDetailPage = () => {
               <div className="flex flex-wrap items-center gap-6 text-white text-opacity-90">
                 <div className="flex items-center">
                   <Play size={20} className="mr-2" />
-                  {course.videos.length} видеа
+                  {course.videos?.length || 0} видеа
                 </div>
                 <div className="flex items-center">
                   <Clock size={20} className="mr-2" />
-                  {course.estimatedHours} часа
+                  {course.estimatedHours || 1} часа
                 </div>
                 <div className="flex items-center">
                   <Award size={20} className="mr-2" />
@@ -338,7 +424,7 @@ const CourseDetailPage = () => {
                   </div>
                 </div>
                 <p className="text-sm text-white text-opacity-80 mb-4">
-                  {completedVideos.size} от {course.videos.length} видеа завършени
+                  {completedVideos.size} от {course.videos?.length || 0} видеа завършени
                 </p>
                 
                 {/* Статистики */}
@@ -346,14 +432,14 @@ const CourseDetailPage = () => {
                   <div>
                     <div className="font-semibold flex items-center justify-center">
                       <Target size={16} className="mr-1" />
-                      {course.videos.length}
+                      {course.videos?.length || 0}
                     </div>
                     <div className="text-white text-opacity-70">Лекции</div>
                   </div>
                   <div>
                     <div className="font-semibold flex items-center justify-center">
                       <Clock size={16} className="mr-1" />
-                      {course.estimatedHours}ч
+                      {course.estimatedHours || 1}ч
                     </div>
                     <div className="text-white text-opacity-70">Време</div>
                   </div>
@@ -395,234 +481,273 @@ const CourseDetailPage = () => {
       {/* Course Content */}
       <div className="py-8">
         <div className="container mx-auto px-4 max-w-[1500px]">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            
-            {/* Video Player */}
-            <div className="lg:col-span-3">
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden relative">
-                {videoLoading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
-                    <div className="bg-white rounded-lg p-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                      <p className="text-sm text-gray-600">Зареждане на видео...</p>
-                    </div>
-                  </div>
-                )}
-                
-                <VideoPlayer
-                  videoUrl={selectedVideo.url}
-                  title={selectedVideo.title}
-                  autoplay={false}
-                />
-                
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                        {selectedVideo.title}
-                      </h2>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span className="flex items-center">
-                          <PlayCircle size={16} className="mr-1" />
-                          Лекция {selectedVideoIndex + 1}
-                        </span>
-                        <span className="flex items-center">
-                          <Clock size={16} className="mr-1" />
-                          {selectedVideo.duration}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      {isVideoCompleted(selectedVideoIndex) ? (
-                        <div className="flex items-center text-green-600 bg-green-50 px-3 py-2 rounded-full">
-                          <CheckCircle size={16} className="mr-1" />
-                          <span className="text-sm font-medium">Завършено</span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => markVideoAsCompleted(selectedVideoIndex)}
-                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
-                        >
-                          Маркирай като завършено
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <p className="text-gray-700 leading-relaxed mb-6">
-                    {selectedVideo.description}
-                  </p>
-                  
-                  {/* Video Info Card */}
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="text-center">
-                        <div className="font-semibold text-blue-600 mb-1">Лекция</div>
-                        <div className="text-gray-700">{selectedVideoIndex + 1} от {course.videos.length}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-semibold text-purple-600 mb-1">Курс</div>
-                        <div className="text-gray-700">Ниво {course.level}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-semibold text-green-600 mb-1">Прогрес</div>
-                        <div className="text-gray-700">{Math.round(progress)}%</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-semibold text-orange-600 mb-1">Статус</div>
-                        <div className={`text-sm ${isVideoCompleted(selectedVideoIndex) ? 'text-green-600' : 'text-gray-500'}`}>
-                          {isVideoCompleted(selectedVideoIndex) ? '✅ Завършено' : '⏳ В процес'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {!course.videos || course.videos.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-xl shadow-lg">
+              <PlayCircle className="text-gray-400 mx-auto mb-4" size={64} />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Няма видеа в този курс
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Курсът все още не съдържа видео материали
+              </p>
+              <button
+                onClick={handleRefreshCourse}
+                disabled={refreshing}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center mx-auto"
+              >
+                <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Презарежда...' : 'Провери за обновления'}
+              </button>
             </div>
-
-            {/* Playlist */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b">
-                  <h3 className="font-semibold text-gray-800 flex items-center">
-                    <BookOpen className="mr-2" size={20} />
-                    Съдържание на курса
-                  </h3>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {completedVideos.size} от {course.videos.length} завършени
-                  </p>
-                </div>
-                
-                <div className="max-h-96 overflow-y-auto">
-                  {course.videos.map((video, index) => (
-                    <div
-                      key={video.id}
-                      onClick={() => handleVideoSelection(index)}
-                      className={`p-4 cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 ${
-                        selectedVideoIndex === index 
-                          ? 'bg-blue-50 border-l-4 border-l-blue-500 shadow-sm' 
-                          : ''
-                      }`}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 transition-all duration-200 ${
-                          isVideoCompleted(index) 
-                            ? 'bg-green-500 text-white shadow-md' 
-                            : selectedVideoIndex === index
-                              ? 'bg-blue-500 text-white shadow-md'
-                              : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {isVideoCompleted(index) ? (
-                            <CheckCircle size={16} />
-                          ) : (
-                            index + 1
-                          )}
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              
+              {/* Video Player */}
+              <div className="lg:col-span-3">
+                {selectedVideo ? (
+                  <div className="bg-white rounded-xl shadow-lg overflow-hidden relative">
+                    {videoLoading && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
+                        <div className="bg-white rounded-lg p-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                          <p className="text-sm text-gray-600">Зареждане на видео...</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <VideoPlayer
+                      videoUrl={selectedVideo.url}
+                      title={selectedVideo.title}
+                      autoplay={false}
+                    />
+                    
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                            {selectedVideo.title}
+                          </h2>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500">
+                            <span className="flex items-center">
+                              <PlayCircle size={16} className="mr-1" />
+                              Лекция {selectedVideoIndex + 1}
+                            </span>
+                            <span className="flex items-center">
+                              <Clock size={16} className="mr-1" />
+                              {selectedVideo.duration || '0:00'}
+                            </span>
+                          </div>
                         </div>
                         
-                        <div className="flex-1 min-w-0">
-                          <h4 className={`font-medium text-sm leading-tight ${
-                            selectedVideoIndex === index ? 'text-blue-600' : 'text-gray-800'
-                          }`}>
-                            {video.title}
-                          </h4>
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs text-gray-500">
-                              {video.duration}
-                            </span>
-                            {isVideoCompleted(index) && (
-                              <span className="text-xs text-green-600 font-medium">
-                                Готово ✓
-                              </span>
-                            )}
+                        <div className="flex items-center space-x-3">
+                          {isVideoCompleted(selectedVideoIndex) ? (
+                            <div className="flex items-center text-green-600 bg-green-50 px-3 py-2 rounded-full">
+                              <CheckCircle size={16} className="mr-1" />
+                              <span className="text-sm font-medium">Завършено</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => markVideoAsCompleted(selectedVideoIndex)}
+                              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                            >
+                              Маркирай като завършено
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {selectedVideo.description && (
+                        <p className="text-gray-700 leading-relaxed mb-6">
+                          {selectedVideo.description}
+                        </p>
+                      )}
+                      
+                      {/* Video Info Card */}
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="text-center">
+                            <div className="font-semibold text-blue-600 mb-1">Лекция</div>
+                            <div className="text-gray-700">{selectedVideoIndex + 1} от {course.videos.length}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-purple-600 mb-1">Курс</div>
+                            <div className="text-gray-700">Ниво {course.level}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-green-600 mb-1">Прогрес</div>
+                            <div className="text-gray-700">{Math.round(progress)}%</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-orange-600 mb-1">Статус</div>
+                            <div className={`text-sm ${isVideoCompleted(selectedVideoIndex) ? 'text-green-600' : 'text-gray-500'}`}>
+                              {isVideoCompleted(selectedVideoIndex) ? '✅ Завършено' : '⏳ В процес'}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-                
-                {/* Course Completion Status */}
-                {isCourseCompleted && (
-                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-t border-green-200">
-                    <div className="flex items-center text-green-700">
-                      <Award className="mr-2 text-green-600" size={20} />
-                      <div>
-                        <p className="font-semibold text-sm">Поздравления! 🎉</p>
-                        <p className="text-xs">Завършихте курса успешно</p>
-                        {courseProgress?.completedAt && (
-                          <p className="text-xs mt-1 opacity-75">
-                            {formatDate(courseProgress.completedAt)}
-                          </p>
-                        )}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                    <PlayCircle className="text-gray-400 mx-auto mb-4" size={48} />
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      Изберете видео
+                    </h3>
+                    <p className="text-gray-600">
+                      Кликнете върху видео от списъка за да започнете гледането
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Playlist */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                  <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b">
+                    <h3 className="font-semibold text-gray-800 flex items-center">
+                      <BookOpen className="mr-2" size={20} />
+                      Съдържание на курса
+                    </h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {completedVideos.size} от {course.videos.length} завършени
+                    </p>
+                  </div>
+                  
+                  <div className="max-h-96 overflow-y-auto">
+                    {course.videos.map((video, index) => (
+                      <div
+                        key={video.id}
+                        onClick={() => handleVideoSelection(index)}
+                        className={`p-4 cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 ${
+                          selectedVideoIndex === index 
+                            ? 'bg-blue-50 border-l-4 border-l-blue-500 shadow-sm' 
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 transition-all duration-200 ${
+                            isVideoCompleted(index) 
+                              ? 'bg-green-500 text-white shadow-md' 
+                              : selectedVideoIndex === index
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {isVideoCompleted(index) ? (
+                              <CheckCircle size={16} />
+                            ) : (
+                              index + 1
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-medium text-sm leading-tight ${
+                              selectedVideoIndex === index ? 'text-blue-600' : 'text-gray-800'
+                            }`}>
+                              {video.title}
+                            </h4>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-xs text-gray-500">
+                                {video.duration || '0:00'}
+                              </span>
+                              {isVideoCompleted(index) && (
+                                <span className="text-xs text-green-600 font-medium">
+                                  Готово ✓
+                                </span>
+                              )}
+                            </div>
+                            {video.description && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {video.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Course Completion Status */}
+                  {isCourseCompleted && (
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-t border-green-200">
+                      <div className="flex items-center text-green-700">
+                        <Award className="mr-2 text-green-600" size={20} />
+                        <div>
+                          <p className="font-semibold text-sm">Поздравления! 🎉</p>
+                          <p className="text-xs">Завършихте курса успешно</p>
+                          {courseProgress?.completedAt && (
+                            <p className="text-xs mt-1 opacity-75">
+                              {formatDate(courseProgress.completedAt)}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Navigation Controls */}
-              <div className="mt-6 space-y-3">
-                {/* Previous Video */}
-                {selectedVideoIndex > 0 && (
-                  <button
-                    onClick={() => setSelectedVideoIndex(selectedVideoIndex - 1)}
-                    className="w-full flex items-center justify-center px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
-                  >
-                    <ArrowLeft size={16} className="mr-2" />
-                    Предишно видео
-                  </button>
-                )}
+                  )}
+                </div>
                 
-                {/* Next Video */}
-                {!isLastVideo && (
-                  <button
-                    onClick={() => setSelectedVideoIndex(selectedVideoIndex + 1)}
-                    disabled={!canWatchNextVideo()}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                      canWatchNextVideo()
-                        ? 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-md hover:shadow-lg transform hover:scale-105'
-                        : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white cursor-not-allowed opacity-70'
-                    }`}
-                    title={!canWatchNextVideo() ? 'Завършете текущото видео за да продължите' : 'Следващо видео'}
-                  >
-                    {canWatchNextVideo() ? (
-                      <>
-                        Следващо видео
-                        <Play size={16} className="ml-2" />
-                      </>
-                    ) : (
-                      <>
-                        <Lock size={16} className="mr-2" />
-                        Заключено
-                      </>
-                    )}
-                  </button>
-                )}
-                
-                {/* Course Completion Message */}
-                {isLastVideo && isVideoCompleted(selectedVideoIndex) && isCourseCompleted && (
-                  <div className="text-center p-6 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl border-2 border-green-200">
-                    <Award className="mx-auto mb-3 text-green-600" size={48} />
-                    <h3 className="font-bold text-green-800 text-lg mb-2">
-                      Курсът е завършен! 🏆
-                    </h3>
-                    <p className="text-green-700 text-sm mb-3">
-                      Поздравления! Успешно завършихте всички {course.videos.length} лекции.
-                    </p>
-                    <p className="text-green-600 text-xs">
-                      Можете да продължите с следващото ниво или да прегледате материалите отново.
-                    </p>
-                    {courseProgress?.completedAt && (
-                      <div className="mt-3 pt-3 border-t border-green-300 text-xs text-green-600">
-                        Завършен на: {formatDate(courseProgress.completedAt)}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* Navigation Controls */}
+                <div className="mt-6 space-y-3">
+                  {/* Previous Video */}
+                  {selectedVideoIndex > 0 && (
+                    <button
+                      onClick={() => setSelectedVideoIndex(selectedVideoIndex - 1)}
+                      className="w-full flex items-center justify-center px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+                    >
+                      <ArrowLeft size={16} className="mr-2" />
+                      Предишно видео
+                    </button>
+                  )}
+                  
+                  {/* Next Video */}
+                  {!isLastVideo && (
+                    <button
+                      onClick={() => setSelectedVideoIndex(selectedVideoIndex + 1)}
+                      disabled={!canWatchNextVideo()}
+                      className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        canWatchNextVideo()
+                          ? 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-md hover:shadow-lg transform hover:scale-105'
+                          : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white cursor-not-allowed opacity-70'
+                      }`}
+                      title={!canWatchNextVideo() ? 'Завършете текущото видео за да продължите' : 'Следващо видео'}
+                    >
+                      {canWatchNextVideo() ? (
+                        <>
+                          Следващо видео
+                          <Play size={16} className="ml-2" />
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} className="mr-2" />
+                          Заключено
+                        </>
+                      )}
+                    </button>
+                  )}
+                  
+                  {/* Course Completion Message */}
+                  {isLastVideo && isVideoCompleted(selectedVideoIndex) && isCourseCompleted && (
+                    <div className="text-center p-6 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl border-2 border-green-200">
+                      <Award className="mx-auto mb-3 text-green-600" size={48} />
+                      <h3 className="font-bold text-green-800 text-lg mb-2">
+                        Курсът е завършен! 🏆
+                      </h3>
+                      <p className="text-green-700 text-sm mb-3">
+                        Поздравления! Успешно завършихте всички {course.videos.length} лекции.
+                      </p>
+                      <p className="text-green-600 text-xs">
+                        Можете да продължите с следващото ниво или да прегледате материалите отново.
+                      </p>
+                      {courseProgress?.completedAt && (
+                        <div className="mt-3 pt-3 border-t border-green-300 text-xs text-green-600">
+                          Завършен на: {formatDate(courseProgress.completedAt)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

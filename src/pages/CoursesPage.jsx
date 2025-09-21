@@ -1,5 +1,5 @@
-// src/pages/CoursesPage.jsx - Почистена версия
-import React, { useState } from 'react';
+// src/pages/CoursesPage.jsx - Обновена версия с динамично зареждане
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import Login from '../components/Login';
@@ -13,13 +13,97 @@ import {
   Users,
   BookOpen,
   Award,
-  Shield
+  Shield,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
-import { courses } from '../data/coursesData';
+import { courses, reloadCourses, checkForUpdates } from '../data/coursesData';
 
 const CoursesPage = () => {
   const { isAuthenticated, user, userProfile, hasAccessToCourse } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+  const [coursesData, setCoursesData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastCheck, setLastCheck] = useState(null);
+
+  useEffect(() => {
+    loadCourses();
+    
+    // Проверяваме за обновления на всеки 5 минути
+    const interval = setInterval(checkForCoursesUpdates, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadCourses = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('📚 Зареждане на курсове...');
+      const coursesResult = await courses();
+      
+      if (Array.isArray(coursesResult)) {
+        setCoursesData(coursesResult);
+        console.log(`✅ Заредени ${coursesResult.length} курса`);
+      } else {
+        console.warn('⚠️ Получен невалиден формат на курсове:', coursesResult);
+        setCoursesData([]);
+      }
+      
+      setLastCheck(new Date());
+    } catch (error) {
+      console.error('❌ Грешка при зареждане на курсове:', error);
+      setError('Грешка при зареждане на курсове. Използваме кеширани данни.');
+      
+      // Фолбек към кеширани данни ако има
+      try {
+        const fallbackCourses = await courses();
+        if (Array.isArray(fallbackCourses)) {
+          setCoursesData(fallbackCourses);
+        }
+      } catch (fallbackError) {
+        console.error('❌ Грешка и при фолбек данните:', fallbackError);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshCourses = async () => {
+    setRefreshing(true);
+    setError(null);
+    
+    try {
+      console.log('🔄 Ръчно презареждане на курсове...');
+      const refreshedCourses = await reloadCourses();
+      
+      if (Array.isArray(refreshedCourses)) {
+        setCoursesData(refreshedCourses);
+        console.log(`✅ Презаредени ${refreshedCourses.length} курса`);
+        setLastCheck(new Date());
+      }
+    } catch (error) {
+      console.error('❌ Грешка при презареждане:', error);
+      setError('Грешка при презареждане на курсове');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const checkForCoursesUpdates = async () => {
+    try {
+      const updateCheck = await checkForUpdates();
+      if (updateCheck.hasUpdates) {
+        console.log('🔔 Открити са нови курсове, презареждаме автоматично...');
+        await loadCourses();
+      }
+    } catch (error) {
+      console.warn('⚠️ Грешка при проверка за обновления:', error);
+    }
+  };
 
   const handleLoginSuccess = () => {
     setShowLogin(false);
@@ -69,19 +153,26 @@ const CoursesPage = () => {
 
                 <div className="p-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    {courses.map(course => (
-                      <div key={course.id} className="text-center p-4">
-                        <div className={`bg-gradient-to-r ${course.color} rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 text-2xl`}>
-                          {course.icon}
-                        </div>
-                        <h3 className="font-semibold text-gray-800 text-sm mb-1">
-                          Ниво {course.level}
-                        </h3>
-                        <p className="text-xs text-gray-600">
-                          {course.videos.length} видеа
-                        </p>
+                    {loading ? (
+                      <div className="col-span-full text-center py-8">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Зареждане на курсове...</p>
                       </div>
-                    ))}
+                    ) : (
+                      coursesData.slice(0, 4).map(course => (
+                        <div key={course.id} className="text-center p-4">
+                          <div className={`bg-gradient-to-r ${course.color} rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 text-2xl`}>
+                            {course.icon}
+                          </div>
+                          <h3 className="font-semibold text-gray-800 text-sm mb-1">
+                            Ниво {course.level}
+                          </h3>
+                          <p className="text-xs text-gray-600">
+                            {course.videos?.length || 0} видеа
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
 
                   <div className="text-center">
@@ -109,11 +200,23 @@ const CoursesPage = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-6"></div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Зареждане на курсове</h3>
+          <p className="text-gray-600">Моля изчакайте, докато заредим най-новите курсове...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Филтриране на курсовете въз основа на достъпа от Firestore
-  const accessibleCourses = courses.filter(course => 
+  const accessibleCourses = coursesData.filter(course => 
     hasAccessToCourse(course.id)
   );
-  const lockedCourses = courses.filter(course => 
+  const lockedCourses = coursesData.filter(course => 
     !hasAccessToCourse(course.id)
   );
 
@@ -143,8 +246,17 @@ const CoursesPage = () => {
               </div>
               <div className="flex items-center">
                 <BookOpen size={16} className="mr-1" />
-                {accessibleCourses.length} от {courses.length} курса
+                {accessibleCourses.length} от {coursesData.length} курса
               </div>
+              <button
+                onClick={handleRefreshCourses}
+                disabled={refreshing}
+                className="flex items-center text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                title="Презареди курсове"
+              >
+                <RefreshCw size={16} className={`mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Презарежда...' : 'Обнови'}
+              </button>
             </div>
           </div>
         </div>
@@ -173,12 +285,37 @@ const CoursesPage = () => {
                 Добре дошли, <span className="font-semibold">{userProfile?.displayName || 'Потребител'}</span>
               </p>
               <p className="text-sm text-blue-200">
-                Имате достъп до {accessibleCourses.length} от {courses.length} курса
+                Имате достъп до {accessibleCourses.length} от {coursesData.length} курса
               </p>
+              {lastCheck && (
+                <p className="text-xs text-blue-300 mt-2">
+                  Последно обновяване: {lastCheck.toLocaleTimeString('bg-BG')}
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="py-4">
+          <div className="container mx-auto px-4 max-w-[1500px]">
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertCircle className="mr-2" size={20} />
+                {error}
+              </div>
+              <button 
+                onClick={() => setError(null)}
+                className="text-yellow-500 hover:text-yellow-700"
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Courses Grid */}
       <div className="py-16">
@@ -215,28 +352,28 @@ const CoursesPage = () => {
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center text-gray-600">
                           <Play size={16} className="mr-2" />
-                          {course.videos.length} видео лекции
+                          {course.videos?.length || 0} видео лекции
                         </div>
                         <div className="flex items-center text-gray-600">
                           <Clock size={16} className="mr-2" />
-                          {course.estimatedHours} часа
+                          {course.estimatedHours || 1} часа
                         </div>
                       </div>
 
                       {/* Course Videos Preview */}
                       <div className="space-y-2 mb-6">
-                        {course.videos.slice(0, 3).map((video, index) => (
-                          <div key={video.id} className="flex items-center text-sm text-gray-600">
+                        {(course.videos || []).slice(0, 3).map((video, index) => (
+                          <div key={video.id || index} className="flex items-center text-sm text-gray-600">
                             <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mr-3 text-xs">
                               {index + 1}
                             </div>
                             <span className="flex-1">{video.title}</span>
-                            <span className="text-xs">{video.duration}</span>
+                            <span className="text-xs">{video.duration || '0:00'}</span>
                           </div>
                         ))}
-                        {course.videos.length > 3 && (
+                        {(course.videos?.length || 0) > 3 && (
                           <div className="text-xs text-gray-500 ml-9">
-                            +{course.videos.length - 3} още видеа
+                            +{(course.videos?.length || 0) - 3} още видеа
                           </div>
                         )}
                       </div>
@@ -290,6 +427,10 @@ const CoursesPage = () => {
                           <Shield size={16} className="mr-2" />
                           Ограничен достъп
                         </div>
+                        <div className="flex items-center text-gray-400">
+                          <Play size={16} className="mr-2" />
+                          {course.videos?.length || 0} видеа
+                        </div>
                       </div>
 
                       <div className="bg-gray-50 rounded-lg p-4 text-center">
@@ -309,7 +450,28 @@ const CoursesPage = () => {
           )}
 
           {/* No Courses Message */}
-          {accessibleCourses.length === 0 && (
+          {coursesData.length === 0 && (
+            <div className="text-center py-12">
+              <BookOpen className="text-gray-400 mx-auto mb-4" size={64} />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Няма налични курсове
+              </h3>
+              <p className="text-gray-600 mb-4">
+                В момента няма курсове в системата
+              </p>
+              <button
+                onClick={handleRefreshCourses}
+                disabled={refreshing}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center mx-auto"
+              >
+                <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Презарежда...' : 'Презареди курсовете'}
+              </button>
+            </div>
+          )}
+
+          {/* No Access Message */}
+          {coursesData.length > 0 && accessibleCourses.length === 0 && (
             <div className="text-center py-12">
               <Shield className="text-gray-400 mx-auto mb-4" size={64} />
               <h3 className="text-xl font-semibold text-gray-800 mb-2">
@@ -325,17 +487,30 @@ const CoursesPage = () => {
               <p className="text-gray-500 text-sm mb-4">
                 Email: {user?.email}
               </p>
-              <p className="text-gray-500 text-sm">
+              <p className="text-gray-500 text-sm mb-6">
                 Свържете се с администратор за предоставяне на достъп до курсове
               </p>
               
-              {/* Бутон за презареждане */}
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Презареди страницата
-              </button>
+              <div className="flex items-center justify-center space-x-4">
+                <button
+                  onClick={handleRefreshCourses}
+                  disabled={refreshing}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center"
+                >
+                  <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Презарежда...' : 'Презареди данните'}
+                </button>
+                
+                {userProfile?.roleInfo && userProfile.roleInfo.name === 'Администратор' && (
+                  <Link
+                    to="/admin"
+                    className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center"
+                  >
+                    <Settings size={16} className="mr-2" />
+                    Админ панел
+                  </Link>
+                )}
+              </div>
             </div>
           )}
         </div>
