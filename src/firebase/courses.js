@@ -60,25 +60,182 @@ export const createCourse = async (courseData, adminEmail) => {
  */
 export const getAllCourses = async () => {
   try {
+    console.log('📚 getAllCourses: Започва зареждане на курсове...');
+    
+    // Проверяваме дали db е инициализиран
+    if (!db) {
+      console.error('❌ getAllCourses: db е undefined');
+      return { success: false, error: 'Database не е инициализиран' };
+    }
+    
+    console.log('✅ getAllCourses: Database connection OK');
+    
+    // Създаваме reference към courses колекцията
     const coursesRef = collection(db, 'courses');
-    const snapshot = await getDocs(coursesRef); // Simple query, no ordering
+    console.log('✅ getAllCourses: Created courses collection reference');
+    
+    // Изпълняваме заявката
+    console.log('🔍 getAllCourses: Executing query...');
+    const snapshot = await getDocs(coursesRef);
+    
+    console.log(`✅ getAllCourses: Query successful, found ${snapshot.size} documents`);
     
     const courses = [];
+    let processedCount = 0;
+    
     snapshot.forEach(doc => {
-      // ... process documents
+      try {
+        const data = doc.data();
+        const courseData = {
+          id: doc.id,
+          ...data,
+          // Осигуряваме че всички задължителни полета съществуват
+          title: data.title || 'Неименуван курс',
+          description: data.description || 'Няма описание',
+          level: data.level || 1,
+          color: data.color || 'from-gray-500 to-gray-600',
+          icon: data.icon || '📚',
+          videos: Array.isArray(data.videos) ? data.videos : [],
+          isActive: data.isActive !== false, // По подразбиране true освен ако не е explicit false
+          estimatedHours: data.estimatedHours || 1,
+          prerequisite: data.prerequisite || null
+        };
+        
+        courses.push(courseData);
+        processedCount++;
+        
+        console.log(`📄 getAllCourses: Processed course ${processedCount}: ${courseData.title} (${courseData.videos.length} videos)`);
+      } catch (docError) {
+        console.error(`❌ getAllCourses: Error processing document ${doc.id}:`, docError);
+      }
     });
 
-    // Sort manually in JavaScript
+    // Сортиране на курсовете
     courses.sort((a, b) => {
+      // Първо по ниво
       if (a.level !== b.level) return a.level - b.level;
-      return a.createdAt - b.createdAt;
+      // После по дата на създаване (ако съществува)
+      if (a.createdAt && b.createdAt) {
+        const aTime = a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime();
+        const bTime = b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime();
+        return aTime - bTime;
+      }
+      // Накрая по заглавие
+      return a.title.localeCompare(b.title);
     });
 
+    console.log(`✅ getAllCourses: Successfully processed ${courses.length} courses`);
+    console.log('📋 getAllCourses: Course list:', courses.map(c => ({ id: c.id, title: c.title, level: c.level })));
+    
     return { success: true, data: courses };
+    
   } catch (error) {
-    // ... error handling
+    console.error('❌ getAllCourses: Error occurred:', error);
+    
+    // Детайлна информация за различни типове грешки
+    if (error.code) {
+      console.error(`🔴 Firebase Error Code: ${error.code}`);
+      console.error(`🔴 Firebase Error Message: ${error.message}`);
+      
+      switch (error.code) {
+        case 'permission-denied':
+          console.error('🚫 Permission denied - проверете Firestore rules');
+          console.error('💡 Suggestion: Проверете дали потребителят е автентифициран и има правилни права');
+          return { success: false, error: 'Няма права за достъп до курсове. Проверете автентификацията.' };
+          
+        case 'unavailable':
+          console.error('🌐 Firestore unavailable - проверете интернет връзката');
+          return { success: false, error: 'Базата данни е недостъпна. Проверете интернет връзката.' };
+          
+        case 'not-found':
+          console.error('📂 Collection not found');
+          return { success: false, error: 'Колекцията с курсове не е намерена.' };
+          
+        default:
+          console.error('❓ Unknown Firebase error');
+          return { success: false, error: `Firebase грешка: ${error.message}` };
+      }
+    } else {
+      console.error('❓ Non-Firebase error:', error);
+      return { success: false, error: 'Неочаквана грешка при зареждане на курсове' };
+    }
   }
 };
+
+// Добавяме функция за тестване на конкретен курс
+export const testCourseAccess = async (courseId) => {
+  try {
+    console.log(`🧪 Testing access to course: ${courseId}`);
+    
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    
+    if (courseSnap.exists()) {
+      console.log(`✅ Course ${courseId} exists:`, courseSnap.data());
+      return { success: true, data: { id: courseSnap.id, ...courseSnap.data() } };
+    } else {
+      console.log(`❌ Course ${courseId} does not exist`);
+      return { success: false, error: 'Курсът не съществува' };
+    }
+  } catch (error) {
+    console.error(`❌ Error accessing course ${courseId}:`, error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Функция за създаване на тестов курс
+export const createTestCourse = async (adminEmail) => {
+  try {
+    console.log('🧪 Creating test course...');
+    
+    const testCourseData = {
+      title: 'Тестов курс',
+      description: 'Това е тестов курс за диагностика',
+      level: 1,
+      color: 'from-blue-500 to-blue-600',
+      icon: '🧪',
+      videos: [
+        {
+          id: 'test-video-1',
+          title: 'Тестово видео 1',
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          description: 'Тестово видео за диагностика',
+          duration: '5:00',
+          order: 1,
+          category: 'Тест'
+        }
+      ],
+      isActive: true,
+      estimatedHours: 1,
+      prerequisite: null
+    };
+    
+    const result = await createCourse(testCourseData, adminEmail);
+    
+    if (result.success) {
+      console.log('✅ Test course created successfully');
+    } else {
+      console.error('❌ Failed to create test course:', result.error);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Error creating test course:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Добавяме функциите към window за лесно тестване
+if (typeof window !== 'undefined') {
+  window.testCourseAccess = testCourseAccess;
+  window.createTestCourse = createTestCourse;
+  window.testGetAllCourses = getAllCourses;
+  
+  console.log('🧪 Course diagnostic functions available:');
+  console.log('  window.testGetAllCourses() - Тест на getAllCourses');
+  console.log('  window.testCourseAccess("courseId") - Тест на достъп до курс');
+  console.log('  window.createTestCourse("admin@iru.bg") - Създаване на тестов курс');
+}
 
 /**
  * Получаване на конкретен курс
