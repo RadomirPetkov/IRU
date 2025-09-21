@@ -1,4 +1,4 @@
-// src/pages/CoursesPage.jsx - Обновена версия с динамично зареждане
+// src/pages/CoursesPage.jsx - Fixed imports
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -15,7 +15,8 @@ import {
   Award,
   Shield,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Settings  // Added missing Settings import
 } from 'lucide-react';
 import { courses, reloadCourses, checkForUpdates } from '../data/coursesData';
 

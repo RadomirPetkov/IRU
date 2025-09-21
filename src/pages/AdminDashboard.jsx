@@ -1,4 +1,4 @@
-// src/pages/AdminDashboard.jsx - Обновена версия с управление на курсове
+// src/pages/AdminDashboard.jsx - Fixed imports
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Video,
   Edit,
-  Layers
+  Layers,
+  X  // Added missing X import
 } from 'lucide-react';
 import {
   getAdminUsersList,
@@ -656,3 +657,6 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+
+

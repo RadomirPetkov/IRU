@@ -61,18 +61,22 @@ export const createCourse = async (courseData, adminEmail) => {
 export const getAllCourses = async () => {
   try {
     const coursesRef = collection(db, 'courses');
-    const q = query(coursesRef, orderBy('level'), orderBy('createdAt'));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(coursesRef); // Simple query, no ordering
     
     const courses = [];
     snapshot.forEach(doc => {
-      courses.push({ id: doc.id, ...doc.data() });
+      // ... process documents
+    });
+
+    // Sort manually in JavaScript
+    courses.sort((a, b) => {
+      if (a.level !== b.level) return a.level - b.level;
+      return a.createdAt - b.createdAt;
     });
 
     return { success: true, data: courses };
   } catch (error) {
-    console.error('Error getting courses:', error);
-    return { success: false, error: 'Грешка при получаване на курсове' };
+    // ... error handling
   }
 };
 
