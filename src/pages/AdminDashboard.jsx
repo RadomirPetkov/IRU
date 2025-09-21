@@ -32,7 +32,7 @@ import {
 } from '../services/userService';
 import { courses, getCoursesStats, reloadCourses } from '../data/coursesData';
 import AdminUserCreation from '../components/AdminUserCreation';
-import CourseManagement from '../components/CourseManagement';
+import EnhancedCourseManagement from '../components/CourseManagement';
 
 const AdminDashboard = () => {
   const { isAuthenticated, hasPermission, user, userProfile } = useAuth();
@@ -623,7 +623,7 @@ const AdminDashboard = () => {
               </div>
 
               {/* Course Management Component */}
-              <CourseManagement adminEmail={user?.email} />
+              <EnhancedCourseManagement adminEmail={user?.email} />
             </div>
           )}
 

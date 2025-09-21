@@ -1,4 +1,4 @@
-// src/components/CourseManagement.jsx - Пълен компонент за управление на курсове
+// src/components/EnhancedCourseManagement.jsx - Пълен компонент с поддръжка за задачи
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -7,6 +7,7 @@ import {
   Save, 
   X, 
   Play, 
+  FileText,
   GripVertical,
   Eye,
   EyeOff,
@@ -14,31 +15,33 @@ import {
   CheckCircle,
   Clock,
   BookOpen,
-  Link as LinkIcon,
+  Video,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  RotateCcw
 } from 'lucide-react';
 import {
   getAllCourses,
   createCourse,
   updateCourse,
   deleteCourse,
-  addVideoToCourse,
-  updateVideoInCourse,
-  removeVideoFromCourse,
-  reorderVideosInCourse,
+  addContentToCourse,
+  updateContentInCourse,
+  removeContentFromCourse,
   validateVideoUrl,
-  getYouTubeThumbnail,
-  calculateCourseTime,
-  checkCourseDependencies
+  validateAssignmentData,
+  getCourseContentStats,
+  migrateLegacyCourse,
+  CONTENT_TYPES,
+  ASSIGNMENT_TYPES
 } from '../firebase/courses';
+import AssignmentManagement from './AssignmentManagement';
 
-const CourseManagement = ({ adminEmail }) => {
+const EnhancedCourseManagement = ({ adminEmail }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [editingVideo, setEditingVideo] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -60,6 +63,11 @@ const CourseManagement = ({ adminEmail }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearMessages = () => {
+    setError('');
+    setSuccess('');
   };
 
   const handleCreateCourse = async (courseData) => {
@@ -98,13 +106,6 @@ const CourseManagement = ({ adminEmail }) => {
     }
 
     try {
-      // Проверяваме за зависимости
-      const dependencyCheck = await checkCourseDependencies(courseId);
-      if (dependencyCheck.success && dependencyCheck.hasDependencies) {
-        setError(`Курсът не може да бъде изтрит, защото се използва като предварително условие за: ${dependencyCheck.dependentCourses.map(c => c.title).join(', ')}`);
-        return;
-      }
-
       const result = await deleteCourse(courseId, adminEmail);
       if (result.success) {
         setSuccess('Курсът е изтрит успешно');
@@ -115,58 +116,6 @@ const CourseManagement = ({ adminEmail }) => {
     } catch (error) {
       setError('Грешка при изтриване на курс');
     }
-  };
-
-  const handleAddVideo = async (courseId, videoData) => {
-    try {
-      const result = await addVideoToCourse(courseId, videoData, adminEmail);
-      if (result.success) {
-        setSuccess('Видеото е добавено успешно');
-        loadCourses();
-      } else {
-        setError(result.error);
-      }
-    } catch (error) {
-      setError('Грешка при добавяне на видео');
-    }
-  };
-
-  const handleUpdateVideo = async (courseId, videoId, videoData) => {
-    try {
-      const result = await updateVideoInCourse(courseId, videoId, videoData, adminEmail);
-      if (result.success) {
-        setSuccess('Видеото е актуализирано успешно');
-        setEditingVideo(null);
-        loadCourses();
-      } else {
-        setError(result.error);
-      }
-    } catch (error) {
-      setError('Грешка при актуализиране на видео');
-    }
-  };
-
-  const handleDeleteVideo = async (courseId, videoId) => {
-    if (!window.confirm('Сигурни ли сте, че искате да изтриете това видео?')) {
-      return;
-    }
-
-    try {
-      const result = await removeVideoFromCourse(courseId, videoId, adminEmail);
-      if (result.success) {
-        setSuccess('Видеото е изтрито успешно');
-        loadCourses();
-      } else {
-        setError(result.error);
-      }
-    } catch (error) {
-      setError('Грешка при изтриване на видео');
-    }
-  };
-
-  const clearMessages = () => {
-    setError('');
-    setSuccess('');
   };
 
   if (loading) {
@@ -184,7 +133,7 @@ const CourseManagement = ({ adminEmail }) => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-800">Управление на курсове</h2>
-          <p className="text-gray-600 mt-2">Създавайте и редактирайте курсове и видеа</p>
+          <p className="text-gray-600 mt-2">Създавайте и редактирайте курсове, видеа и задачи</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -236,16 +185,13 @@ const CourseManagement = ({ adminEmail }) => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {courses.map(course => (
-            <CourseCard
+            <EnhancedCourseCard
               key={course.id}
               course={course}
               onEdit={setEditingCourse}
               onDelete={handleDeleteCourse}
-              onAddVideo={handleAddVideo}
-              onEditVideo={setEditingVideo}
-              onDeleteVideo={handleDeleteVideo}
-              editingVideo={editingVideo}
-              onUpdateVideo={handleUpdateVideo}
+              onUpdate={loadCourses}
+              adminEmail={adminEmail}
             />
           ))}
         </div>
@@ -273,21 +219,62 @@ const CourseManagement = ({ adminEmail }) => {
   );
 };
 
-// Компонент за карта на курс
-const CourseCard = ({ 
+// Обновена карта на курс с поддръжка за смесено съдържание
+const EnhancedCourseCard = ({ 
   course, 
   onEdit, 
   onDelete, 
-  onAddVideo, 
-  onEditVideo, 
-  onDeleteVideo,
-  editingVideo,
-  onUpdateVideo 
+  onUpdate,
+  adminEmail 
 }) => {
-  const [showAddVideo, setShowAddVideo] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
+  const [activeTab, setActiveTab] = useState('content');
+  const [showAddContent, setShowAddContent] = useState(false);
 
-  const totalTime = calculateCourseTime(course.videos || []);
+  // Проверяваме дали курсът има новата структура
+  const hasNewStructure = course.content && Array.isArray(course.content);
+  const needsMigration = !hasNewStructure && course.videos && course.videos.length > 0;
+
+  // Получаваме съдържанието
+  const content = hasNewStructure ? course.content : [];
+  const videos = content.filter(item => item.type === CONTENT_TYPES.VIDEO);
+  const assignments = content.filter(item => item.type === CONTENT_TYPES.ASSIGNMENT);
+  const legacyVideos = !hasNewStructure ? (course.videos || []) : [];
+
+  const stats = getCourseContentStats(content);
+
+  const handleMigration = async () => {
+    if (!window.confirm('Това ще мигрира курса към новата структура. Продължи?')) {
+      return;
+    }
+
+    try {
+      const result = await migrateLegacyCourse(course.id, adminEmail);
+      
+      if (result.success) {
+        alert('Курсът е мигриран успешно!');
+        onUpdate();
+      } else {
+        alert('Грешка при миграция: ' + result.error);
+      }
+    } catch (error) {
+      alert('Грешка при миграция на курс');
+    }
+  };
+
+  const handleAddContent = async (contentData) => {
+    try {
+      const result = await addContentToCourse(course.id, contentData, adminEmail);
+      if (result.success) {
+        onUpdate();
+        setShowAddContent(false);
+      } else {
+        alert('Грешка при добавяне на съдържание: ' + result.error);
+      }
+    } catch (error) {
+      alert('Грешка при добавяне на съдържание');
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -304,19 +291,41 @@ const CourseCard = ({
                   <BookOpen size={16} className="mr-1" />
                   Ниво {course.level}
                 </span>
-                <span className="flex items-center">
-                  <Play size={16} className="mr-1" />
-                  {course.videos?.length || 0} видеа
-                </span>
-                <span className="flex items-center">
-                  <Clock size={16} className="mr-1" />
-                  {totalTime}ч
-                </span>
+                {hasNewStructure ? (
+                  <>
+                    <span className="flex items-center">
+                      <Video size={16} className="mr-1" />
+                      {stats.videos} видеа
+                    </span>
+                    <span className="flex items-center">
+                      <FileText size={16} className="mr-1" />
+                      {stats.assignments} задачи
+                    </span>
+                    <span className="flex items-center">
+                      <Clock size={16} className="mr-1" />
+                      {stats.total} елемента
+                    </span>
+                  </>
+                ) : (
+                  <span className="flex items-center">
+                    <Play size={16} className="mr-1" />
+                    {legacyVideos.length} видеа (стара структура)
+                  </span>
+                )}
               </div>
             </div>
           </div>
           
           <div className="flex items-center space-x-3">
+            {needsMigration && (
+              <button
+                onClick={handleMigration}
+                className="bg-yellow-500 bg-opacity-80 p-2 rounded-lg hover:bg-opacity-100 transition-all text-sm"
+                title="Мигрирай към новата структура"
+              >
+                <RotateCcw size={16} />
+              </button>
+            )}
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="bg-white bg-opacity-20 p-2 rounded-lg hover:bg-opacity-30 transition-all"
@@ -345,53 +354,108 @@ const CourseCard = ({
       {/* Course Content */}
       {!collapsed && (
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-gray-800">
-              Видеа ({course.videos?.length || 0})
-            </h4>
-            <button
-              onClick={() => setShowAddVideo(true)}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center text-sm"
-            >
-              <Plus size={16} className="mr-1" />
-              Добави видео
-            </button>
-          </div>
-
-          {/* Videos List */}
-          <div className="space-y-3">
-            {course.videos?.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <Play className="text-gray-400 mx-auto mb-2" size={32} />
-                <p className="text-gray-600">Няма добавени видеа</p>
+          {needsMigration ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <AlertCircle className="text-yellow-600 mr-3" size={24} />
+                <div>
+                  <h4 className="font-semibold text-yellow-800">Миграция на курс</h4>
+                  <p className="text-yellow-700 text-sm">
+                    Този курс използва старата структура. Мигрирайте го за да добавяте задачи.
+                  </p>
+                  <button
+                    onClick={handleMigration}
+                    className="mt-2 bg-yellow-600 text-white px-4 py-2 rounded text-sm hover:bg-yellow-700 transition-colors"
+                  >
+                    Мигрирай курса
+                  </button>
+                </div>
               </div>
-            ) : (
-              course.videos?.map((video, index) => (
-                <VideoItem
-                  key={video.id}
-                  video={video}
-                  courseId={course.id}
-                  index={index}
-                  onEdit={onEditVideo}
-                  onDelete={onDeleteVideo}
-                  isEditing={editingVideo?.id === video.id}
-                  onUpdate={onUpdateVideo}
-                />
-              ))
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              {/* Tabs */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setActiveTab('content')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      activeTab === 'content'
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Всичко съдържание ({stats.total})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('videos')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      activeTab === 'videos'
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Видеа ({stats.videos})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('assignments')}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      activeTab === 'assignments'
+                        ? 'bg-green-100 text-green-600'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Задачи ({stats.assignments})
+                  </button>
+                </div>
 
-          {/* Add Video Form */}
-          {showAddVideo && (
-            <AddVideoForm
-              courseId={course.id}
-              onSubmit={(videoData) => {
-                onAddVideo(course.id, videoData);
-                setShowAddVideo(false);
-              }}
-              onCancel={() => setShowAddVideo(false)}
-              videoCount={course.videos?.length || 0}
-            />
+                <button
+                  onClick={() => setShowAddContent(true)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
+                >
+                  <Plus size={16} className="mr-1" />
+                  Добави съдържание
+                </button>
+              </div>
+
+              {/* Content Display */}
+              {activeTab === 'content' && (
+                <ContentList 
+                  content={content}
+                  courseId={course.id}
+                  adminEmail={adminEmail}
+                  onUpdate={onUpdate}
+                />
+              )}
+
+              {activeTab === 'videos' && (
+                <VideoList 
+                  videos={videos}
+                  courseId={course.id}
+                  adminEmail={adminEmail}
+                  onUpdate={onUpdate}
+                />
+              )}
+
+              {activeTab === 'assignments' && (
+                <AssignmentManagement
+                  courseId={course.id}
+                  assignments={assignments}
+                  onUpdate={onUpdate}
+                  adminEmail={adminEmail}
+                />
+              )}
+
+              {/* Add Content Form */}
+              {showAddContent && (
+                <AddContentForm
+                  courseId={course.id}
+                  onSubmit={handleAddContent}
+                  onCancel={() => setShowAddContent(false)}
+                  contentCount={stats.total}
+                />
+              )}
+            </>
           )}
         </div>
       )}
@@ -399,191 +463,239 @@ const CourseCard = ({
   );
 };
 
-// Компонент за видео елемент
-const VideoItem = ({ video, courseId, index, onEdit, onDelete, isEditing, onUpdate }) => {
-  const [editData, setEditData] = useState({
-    title: video.title,
-    url: video.url,
-    description: video.description,
-    duration: video.duration
-  });
+// Компонент за показване на смесено съдържание
+const ContentList = ({ content, courseId, adminEmail, onUpdate }) => {
+  if (content.length === 0) {
+    return (
+      <div className="text-center py-8 bg-gray-50 rounded-lg">
+        <BookOpen className="text-gray-400 mx-auto mb-4" size={48} />
+        <h4 className="text-lg font-semibold text-gray-800 mb-2">Няма съдържание</h4>
+        <p className="text-gray-600">Добавете видеа и задачи за този курс</p>
+      </div>
+    );
+  }
 
-  const handleSave = () => {
-    onUpdate(courseId, video.id, editData);
+  const handleDelete = async (contentId) => {
+    if (!window.confirm('Сигурни ли сте, че искате да изтриете това съдържание?')) {
+      return;
+    }
+
+    try {
+      const result = await removeContentFromCourse(courseId, contentId, adminEmail);
+      if (result.success) {
+        onUpdate();
+      } else {
+        alert('Грешка при изтриване: ' + result.error);
+      }
+    } catch (error) {
+      alert('Грешка при изтриване на съдържание');
+    }
   };
 
-  const isValidUrl = validateVideoUrl(editData.url);
-
-  if (isEditing) {
-    return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Заглавие
-            </label>
-            <input
-              type="text"
-              value={editData.title}
-              onChange={(e) => setEditData({...editData, title: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Заглавие на видеото"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Продължителност
-            </label>
-            <input
-              type="text"
-              value={editData.duration}
-              onChange={(e) => setEditData({...editData, duration: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="15:30"
-            />
-          </div>
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            URL на видеото
-          </label>
-          <div className="relative">
-            <input
-              type="url"
-              value={editData.url}
-              onChange={(e) => setEditData({...editData, url: e.target.value})}
-              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 ${
-                isValidUrl ? 'border-green-300 focus:ring-green-500' : 'border-red-300 focus:ring-red-500'
-              }`}
-              placeholder="https://www.youtube.com/watch?v=..."
-            />
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-              {isValidUrl ? (
-                <CheckCircle className="text-green-500" size={20} />
+  return (
+    <div className="space-y-3">
+      {content.map((item, index) => (
+        <div
+          key={item.id}
+          className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-4 flex-1">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
+              item.type === CONTENT_TYPES.VIDEO ? 'bg-blue-500' : 'bg-green-500'
+            }`}>
+              {item.type === CONTENT_TYPES.VIDEO ? (
+                <Play size={16} />
               ) : (
-                <AlertCircle className="text-red-500" size={20} />
+                <FileText size={16} />
               )}
             </div>
+            
+            <div className="flex-1">
+              <h5 className="font-medium text-gray-800">{item.title}</h5>
+              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                <span>
+                  {item.type === CONTENT_TYPES.VIDEO ? 'Видео' : 'Задача'}
+                </span>
+                {item.duration && (
+                  <span className="flex items-center">
+                    <Clock size={12} className="mr-1" />
+                    {item.duration}
+                  </span>
+                )}
+                {item.estimatedTime && (
+                  <span className="flex items-center">
+                    <Clock size={12} className="mr-1" />
+                    {item.estimatedTime}
+                  </span>
+                )}
+                <span>Позиция {item.order}</span>
+              </div>
+            </div>
           </div>
-          {!isValidUrl && editData.url && (
-            <p className="text-red-600 text-xs mt-1">
-              Невалиден URL. Поддържат се YouTube, Vimeo и директни видео файлове.
-            </p>
-          )}
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleDelete(item.id)}
+              className="text-red-600 hover:bg-red-100 p-2 rounded transition-colors"
+              title="Изтрий"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Описание
-          </label>
-          <textarea
-            value={editData.description}
-            onChange={(e) => setEditData({...editData, description: e.target.value})}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="3"
-            placeholder="Описание на видеото..."
-          />
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handleSave}
-            disabled={!editData.title || !isValidUrl}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-          >
-            <Save size={16} className="mr-1" />
-            Запази
-          </button>
-          <button
-            onClick={() => onEdit(null)}
-            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center"
-          >
-            <X size={16} className="mr-1" />
-            Отказ
-          </button>
-        </div>
+      ))}
+    </div>
+  );
+};
+
+// Компонент за показване само на видеа
+const VideoList = ({ videos, courseId, adminEmail, onUpdate }) => {
+  if (videos.length === 0) {
+    return (
+      <div className="text-center py-8 bg-gray-50 rounded-lg">
+        <Play className="text-gray-400 mx-auto mb-4" size={48} />
+        <h4 className="text-lg font-semibold text-gray-800 mb-2">Няма видеа</h4>
+        <p className="text-gray-600">Добавете първото видео за този курс</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-      <div className="flex items-center space-x-4 flex-1">
-        <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-semibold text-sm">
-          {index + 1}
-        </div>
-        
-        <div className="flex-1">
-          <h5 className="font-medium text-gray-800">{video.title}</h5>
-          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-            <span className="flex items-center">
-              <Clock size={14} className="mr-1" />
-              {video.duration}
-            </span>
-            <span className="flex items-center">
-              <LinkIcon size={14} className="mr-1" />
-              {video.url.includes('youtube') ? 'YouTube' : 
-               video.url.includes('vimeo') ? 'Vimeo' : 'Директно'}
-            </span>
+    <div className="space-y-3">
+      {videos.map((video, index) => (
+        <div
+          key={video.id}
+          className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-medium text-sm">
+              {video.order || index + 1}
+            </div>
+            <div className="flex-1">
+              <h5 className="font-medium text-gray-800">{video.title}</h5>
+              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                <span className="flex items-center">
+                  <Clock size={14} className="mr-1" />
+                  {video.duration}
+                </span>
+                <span className="flex items-center">
+                  <Video size={14} className="mr-1" />
+                  {video.url.includes('youtube') ? 'YouTube' : 
+                   video.url.includes('vimeo') ? 'Vimeo' : 'Директно'}
+                </span>
+              </div>
+              {video.description && (
+                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{video.description}</p>
+              )}
+            </div>
           </div>
-          {video.description && (
-            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{video.description}</p>
-          )}
         </div>
-      </div>
-      
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={() => onEdit(video)}
-          className="text-blue-600 hover:bg-blue-100 p-2 rounded transition-colors"
-          title="Редактирай видео"
-        >
-          <Edit3 size={16} />
-        </button>
-        <button
-          onClick={() => onDelete(courseId, video.id)}
-          className="text-red-600 hover:bg-red-100 p-2 rounded transition-colors"
-          title="Изтрий видео"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
+      ))}
     </div>
   );
 };
 
-// Формуляр за добавяне на видео
-const AddVideoForm = ({ courseId, onSubmit, onCancel, videoCount }) => {
+// Формуляр за добавяне на съдържание
+const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
+  const [contentType, setContentType] = useState(CONTENT_TYPES.VIDEO);
   const [formData, setFormData] = useState({
     title: '',
+    order: contentCount + 1,
+    // За видеа
     url: '',
     description: '',
     duration: '',
-    order: videoCount + 1
+    category: 'Видео лекция',
+    // За задачи
+    assignmentType: ASSIGNMENT_TYPES.DOCUMENT,
+    instructions: '',
+    difficulty: 'medium',
+    estimatedTime: '30 мин',
+    documentUrl: '',
+    textContent: '',
+    linkUrl: '',
+    downloadable: true,
+    openInNewTab: true
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (formData.title && validateVideoUrl(formData.url)) {
-      onSubmit(formData);
-      setFormData({
-        title: '',
-        url: '',
-        description: '',
-        duration: '',
-        order: videoCount + 2
-      });
-    }
+    
+    const contentData = {
+      type: contentType,
+      title: formData.title,
+      order: formData.order,
+      ...getContentSpecificFields()
+    };
+
+    onSubmit(contentData);
   };
 
-  const isValidUrl = validateVideoUrl(formData.url);
+  const getContentSpecificFields = () => {
+    if (contentType === CONTENT_TYPES.VIDEO) {
+      return {
+        url: formData.url,
+        description: formData.description,
+        duration: formData.duration,
+        category: formData.category
+      };
+    } else {
+      const baseFields = {
+        assignmentType: formData.assignmentType,
+        description: formData.description,
+        instructions: formData.instructions,
+        difficulty: formData.difficulty,
+        estimatedTime: formData.estimatedTime
+      };
+
+      if (formData.assignmentType === ASSIGNMENT_TYPES.DOCUMENT) {
+        return { ...baseFields, documentUrl: formData.documentUrl, downloadable: formData.downloadable };
+      } else if (formData.assignmentType === ASSIGNMENT_TYPES.TEXT) {
+        return { ...baseFields, textContent: formData.textContent };
+      } else if (formData.assignmentType === ASSIGNMENT_TYPES.LINK) {
+        return { ...baseFields, linkUrl: formData.linkUrl, openInNewTab: formData.openInNewTab };
+      }
+    }
+    return {};
+  };
 
   return (
-    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-      <h5 className="font-semibold text-gray-800 mb-4">Добави ново видео</h5>
+    <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
+      <h4 className="font-semibold text-gray-800 mb-4">Добави ново съдържание</h4>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Content Type Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Тип съдържание
+          </label>
+          <div className="flex space-x-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                value={CONTENT_TYPES.VIDEO}
+                checked={contentType === CONTENT_TYPES.VIDEO}
+                onChange={(e) => setContentType(e.target.value)}
+                className="mr-2"
+              />
+              <Video size={16} className="mr-1" />
+              Видео
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                value={CONTENT_TYPES.ASSIGNMENT}
+                checked={contentType === CONTENT_TYPES.ASSIGNMENT}
+                onChange={(e) => setContentType(e.target.value)}
+                className="mr-2"
+              />
+              <FileText size={16} className="mr-1" />
+              Задача
+            </label>
+          </div>
+        </div>
+
+        {/* Common Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -593,80 +705,227 @@ const AddVideoForm = ({ courseId, onSubmit, onCancel, videoCount }) => {
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Заглавие на видеото"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Продължителност
+              Позиция
             </label>
             <input
-              type="text"
-              value={formData.duration}
-              onChange={(e) => setFormData({...formData, duration: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="15:30"
+              type="number"
+              value={formData.order}
+              onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            URL на видеото *
-          </label>
-          <div className="relative">
-            <input
-              type="url"
-              value={formData.url}
-              onChange={(e) => setFormData({...formData, url: e.target.value})}
-              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 ${
-                isValidUrl || !formData.url ? 'border-gray-300 focus:ring-green-500' : 'border-red-300 focus:ring-red-500'
-              }`}
-              placeholder="https://www.youtube.com/watch?v=..."
-              required
-            />
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-              {formData.url && (isValidUrl ? (
-                <CheckCircle className="text-green-500" size={20} />
-              ) : (
-                <AlertCircle className="text-red-500" size={20} />
-              ))}
+
+        {/* Video-specific fields */}
+        {contentType === CONTENT_TYPES.VIDEO && (
+          <div className="space-y-4 border-t pt-4">
+            <h5 className="font-medium text-gray-800">Настройки за видео</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  URL на видеото *
+                </label>
+                <input
+                  type="url"
+                  value={formData.url}
+                  onChange={(e) => setFormData({...formData, url: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Продължителност
+                </label>
+                <input
+                  type="text"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="15:30"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Описание
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+              />
             </div>
           </div>
-          {!isValidUrl && formData.url && (
-            <p className="text-red-600 text-xs mt-1">
-              Невалиден URL. Поддържат се YouTube, Vimeo и директни видео файлове.
-            </p>
-          )}
-          <p className="text-gray-500 text-xs mt-1">
-            Примери: YouTube, Vimeo URLs или директни връзки към .mp4, .webm файлове
-          </p>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Описание
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            rows="3"
-            placeholder="Кратко описание на видеото..."
-          />
-        </div>
-        
-        <div className="flex items-center space-x-3 pt-4 border-t border-green-200">
+        )}
+
+        {/* Assignment-specific fields */}
+        {contentType === CONTENT_TYPES.ASSIGNMENT && (
+          <div className="space-y-4 border-t pt-4">
+            <h5 className="font-medium text-gray-800">Настройки за задача</h5>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Тип задача
+                </label>
+                <select
+                  value={formData.assignmentType}
+                  onChange={(e) => setFormData({...formData, assignmentType: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={ASSIGNMENT_TYPES.DOCUMENT}>Документ (PDF, Word, Excel)</option>
+                  <option value={ASSIGNMENT_TYPES.TEXT}>Текстова задача</option>
+                  <option value={ASSIGNMENT_TYPES.LINK}>Външна връзка</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Трудност
+                </label>
+                <select
+                  value={formData.difficulty}
+                  onChange={(e) => setFormData({...formData, difficulty: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="easy">Лесно</option>
+                  <option value="medium">Средно</option>
+                  <option value="hard">Трудно</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Време
+                </label>
+                <input
+                  type="text"
+                  value={formData.estimatedTime}
+                  onChange={(e) => setFormData({...formData, estimatedTime: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="30 мин"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Инструкции
+              </label>
+              <textarea
+                value={formData.instructions}
+                onChange={(e) => setFormData({...formData, instructions: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+                placeholder="Подробни инструкции за изпълнение на задачата"
+              />
+            </div>
+
+            {/* Specific assignment type fields */}
+            {formData.assignmentType === ASSIGNMENT_TYPES.DOCUMENT && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h6 className="font-medium text-blue-800 mb-3">Настройки за документ</h6>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    URL на документа *
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.documentUrl}
+                    onChange={(e) => setFormData({...formData, documentUrl: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://drive.google.com/file/d/..."
+                    required
+                  />
+                  <p className="text-xs text-gray-600 mt-1">
+                    Поддържат се Google Drive, OneDrive, Dropbox или директни връзки
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.downloadable}
+                      onChange={(e) => setFormData({...formData, downloadable: e.target.checked})}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Разреши изтегляне</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {formData.assignmentType === ASSIGNMENT_TYPES.TEXT && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h6 className="font-medium text-green-800 mb-3">Текстова задача</h6>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Съдържание на задачата *
+                  </label>
+                  <textarea
+                    value={formData.textContent}
+                    onChange={(e) => setFormData({...formData, textContent: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    rows="6"
+                    placeholder="Въведете текста на задачата тук..."
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {formData.assignmentType === ASSIGNMENT_TYPES.LINK && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h6 className="font-medium text-purple-800 mb-3">Външна връзка</h6>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      URL на връзката *
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.linkUrl}
+                      onChange={(e) => setFormData({...formData, linkUrl: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="https://example.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.openInNewTab}
+                        onChange={(e) => setFormData({...formData, openInNewTab: e.target.checked})}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Отвори в нов таб</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Submit Buttons */}
+        <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
           <button
             type="submit"
-            disabled={!formData.title || !isValidUrl}
-            className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+            disabled={!formData.title}
+            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
-            <Plus size={16} className="mr-1" />
-            Добави видео
+            <Plus size={16} className="mr-2" />
+            Добави съдържание
           </button>
+          
           <button
             type="button"
             onClick={onCancel}
@@ -734,7 +993,7 @@ const CreateCourseModal = ({ onClose, onSubmit, existingCourses }) => {
                 placeholder="Име на курса"
                 required
               />
-                          </div>
+            </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1068,4 +1327,4 @@ const EditCourseModal = ({ course, onClose, onSubmit, existingCourses }) => {
   );
 };
 
-export default CourseManagement;
+export default EnhancedCourseManagement;

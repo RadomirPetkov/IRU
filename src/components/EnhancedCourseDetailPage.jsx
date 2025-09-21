@@ -24,7 +24,8 @@ import {
   Video,
   ArrowRight
 } from 'lucide-react';
-import { getCourseById, reloadCourses, CONTENT_TYPES } from '../data/coursesData';
+import { getCourseById, reloadCourses } from '../data/coursesData';
+import { CONTENT_TYPES } from '../firebase/courses';
 import { 
   enrollUserInCourse,
   getCourseProgress,

@@ -6,6 +6,7 @@ import { Navigation } from "./components/navigation";
 import HomePage from "./pages/HomePage";
 import CoursesPage from "./pages/CoursesPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
+import EnhancedCourseDetailPage from "./components/EnhancedCourseDetailPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import JsonData from "./data/data.json";
 import SmoothScroll from "smooth-scroll";
@@ -39,7 +40,7 @@ const App = () => {
             />
             <Route 
               path="/course/:courseId" 
-              element={<CourseDetailPage />} 
+              element={<EnhancedCourseDetailPage />} 
             />
             <Route 
               path="/admin" 
