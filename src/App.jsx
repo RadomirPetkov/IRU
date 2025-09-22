@@ -5,7 +5,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { Navigation } from "./components/navigation";
 import HomePage from "./pages/HomePage";
 import CoursesPage from "./pages/CoursesPage";
-import CourseDetailPage from "./pages/CourseDetailPage";
 import EnhancedCourseDetailPage from "./components/EnhancedCourseDetailPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import JsonData from "./data/data.json";
