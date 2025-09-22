@@ -1,5 +1,5 @@
-// src/components/navigation.jsx
-import React, { useState } from "react";
+// src/components/navigation.jsx - Подобрена версия с Bootstrap фикс
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from '../contexts/AuthContext';
 import UserProfile from './UserProfile';
@@ -22,6 +22,25 @@ export const Navigation = (props) => {
   // Проверяваме дали сме на началната страница за да използваме anchor links
   const isHomePage = location.pathname === '/';
 
+  // Гарантираме че Bootstrap JavaScript работи правилно
+  useEffect(() => {
+    // Проверяваме дали jQuery и Bootstrap са заредени
+    const ensureBootstrapWorks = () => {
+      if (typeof window.$ !== 'undefined' && window.$.fn.collapse) {
+        // Bootstrap е зареден, активираме collapse функционалността
+        window.$('.navbar-toggle').off('click').on('click', function() {
+          const target = window.$(this).attr('data-target');
+          window.$(target).collapse('toggle');
+        });
+      } else {
+        // Опитваме отново след малко
+        setTimeout(ensureBootstrapWorks, 100);
+      }
+    };
+
+    ensureBootstrapWorks();
+  }, []);
+
   return (
     <>
       <nav id="menu" className="navbar navbar-default navbar-fixed-top">
@@ -32,12 +51,13 @@ export const Navigation = (props) => {
               className="navbar-toggle collapsed"
               data-toggle="collapse"
               data-target="#bs-example-navbar-collapse-1"
+              aria-expanded="false"
+              aria-controls="bs-example-navbar-collapse-1"
             >
-              {" "}
-              <span className="sr-only">Toggle navigation</span>{" "}
-              <span className="icon-bar"></span>{" "}
-              <span className="icon-bar"></span>{" "}
-              <span className="icon-bar"></span>{" "}
+              <span className="sr-only">Toggle navigation</span>
+              <span className="icon-bar"></span>
+              <span className="icon-bar"></span>
+              <span className="icon-bar"></span>
             </button>
             <Link to="/">
               <img

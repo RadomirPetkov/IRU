@@ -19,3 +19,190 @@
     width: 100%;
   }
 }
+  /* Добавете това в src/App.css за Bootstrap съвместимост */
+
+/* Гарантираме че Bootstrap стиловете работят правилно */
+.navbar-fixed-top {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: 0 !important;
+  z-index: 1030 !important;
+}
+
+.navbar-default {
+  background-color: #f8f8f8 !important;
+  border-color: #e7e7e7 !important;
+}
+
+.navbar {
+  min-height: 50px !important;
+  margin-bottom: 20px !important;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+}
+
+.navbar .container {
+  padding-right: 15px !important;
+  padding-left: 15px !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+}
+
+.navbar-header {
+  float: left !important;
+}
+
+.navbar-toggle {
+  position: relative !important;
+  float: right !important;
+  padding: 9px 10px !important;
+  margin-top: 8px !important;
+  margin-right: 15px !important;
+  margin-bottom: 8px !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+}
+
+.navbar-toggle .icon-bar {
+  display: block !important;
+  width: 22px !important;
+  height: 2px !important;
+  border-radius: 1px !important;
+  background-color: #888 !important;
+}
+
+.navbar-toggle .icon-bar + .icon-bar {
+  margin-top: 4px !important;
+}
+
+.navbar-collapse {
+  padding-right: 15px !important;
+  padding-left: 15px !important;
+  overflow-x: visible !important;
+  -webkit-overflow-scrolling: touch !important;
+  border-top: 1px solid transparent !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1) !important;
+}
+
+.navbar-nav {
+  margin: 7.5px -15px !important;
+}
+
+.navbar-nav > li {
+  float: left !important;
+}
+
+.navbar-nav > li > a {
+  padding-top: 15px !important;
+  padding-bottom: 15px !important;
+  color: #777 !important;
+  text-decoration: none !important;
+}
+
+.navbar-nav > li > a:hover,
+.navbar-nav > li > a:focus {
+  color: #333 !important;
+  background-color: transparent !important;
+}
+
+.navbar-right {
+  float: right !important;
+  margin-right: -15px !important;
+}
+
+/* Responsive fixes */
+@media (max-width: 767px) {
+  .navbar-toggle {
+    display: block !important;
+  }
+  
+  .navbar-collapse {
+    width: auto !important;
+    border-top: 1px solid transparent !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .navbar-collapse.collapse {
+    display: none !important;
+    max-height: none !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+  }
+  
+  .navbar-collapse.collapse.in {
+    display: block !important;
+    overflow-y: auto !important;
+  }
+  
+  .navbar-nav {
+    float: none !important;
+    margin: 7.5px -15px !important;
+  }
+  
+  .navbar-nav > li {
+    float: none !important;
+  }
+  
+  .navbar-nav > li > a {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+  
+  .navbar-right {
+    float: none !important;
+    margin-right: -15px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .navbar-toggle {
+    display: none !important;
+  }
+  
+  .navbar-collapse {
+    width: auto !important;
+    border-top: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  .navbar-collapse.collapse {
+    display: block !important;
+    height: auto !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+  }
+  
+  .navbar-nav {
+    float: left !important;
+    margin: 0 !important;
+  }
+  
+  .navbar-nav > li {
+    float: left !important;
+  }
+  
+  .navbar-right {
+    float: right !important;
+    margin-right: -15px !important;
+  }
+}
+
+/* Визуални подобрения */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+}
+
+/* Smooth scrolling за anchor links */
+html {
+  scroll-behavior: smooth;
+}

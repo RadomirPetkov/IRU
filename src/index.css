@@ -11,3 +11,25 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Премахваме прехода при зареждане на header */
+.header-title {
+  transition: none !important;
+}
+
+/* Осигуряваме плавно зареждане без скачане */
+@media (max-width: 767px) {
+  .mobile-header {
+    min-height: calc(100vh - 80px);
+  }
+}
+
+/* Предотвратяваме FOUC (Flash of Unstyled Content) */
+.header-loading {
+  opacity: 0;
+  transition: opacity 0.1s ease-in;
+}
+
+.header-loaded {
+  opacity: 1;
+}

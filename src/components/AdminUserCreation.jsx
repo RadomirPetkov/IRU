@@ -1,5 +1,5 @@
-// src/components/AdminUserCreation.jsx - Централизирана логика за създаване
-import React, { useState } from "react";
+// src/components/AdminUserCreation.jsx - Поправена версия
+import React, { useState, useEffect } from "react";
 import {
   User,
   Plus,
@@ -17,7 +17,7 @@ import {
   ROLES,
   ROLE_DEFINITIONS,
 } from "../services/userService";
-import { courses } from "../data/coursesData";
+import { courses } from "../data/coursesData"; // Импортираме функцията
 
 const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
   const [formData, setFormData] = useState({
@@ -34,6 +34,29 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  
+  // Добавяме state за курсовете
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+
+  // Зареждаме курсовете при монтиране на компонента
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    setCoursesLoading(true);
+    try {
+      const coursesData = await courses(); // Извикваме функцията
+      console.log('📚 Заредени курсове за AdminUserCreation:', coursesData);
+      setAvailableCourses(Array.isArray(coursesData) ? coursesData : []);
+    } catch (error) {
+      console.error('❌ Грешка при зареждане на курсове:', error);
+      setAvailableCourses([]);
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -360,48 +383,61 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
               <BookOpen className="mr-2" size={18} />
               Достъп до курсове
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {courses.map((course) => (
-                <label
-                  key={course.id}
-                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
-                    formData.courses.includes(course.id)
-                      ? "border-green-500 bg-green-50"
-                      : "border-gray-300 hover:border-gray-400"
-                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.courses.includes(course.id)}
-                    onChange={() => handleCourseToggle(course.id)}
-                    className="sr-only"
-                    disabled={loading}
-                  />
-                  <div className="flex items-center w-full">
-                    <div
-                      className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
-                        formData.courses.includes(course.id)
-                          ? "border-green-500 bg-green-500"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      {formData.courses.includes(course.id) && (
-                        <Check className="text-white" size={12} />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800 text-sm">
-                        {course.title}
+            
+            {coursesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+                <span className="text-gray-600">Зареждане на курсове...</span>
+              </div>
+            ) : availableCourses.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <BookOpen className="text-gray-400 mx-auto mb-2" size={32} />
+                <p className="text-gray-600 text-sm">Няма налични курсове</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {availableCourses.map((course) => (
+                  <label
+                    key={course.id}
+                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
+                      formData.courses.includes(course.id)
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-300 hover:border-gray-400"
+                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.courses.includes(course.id)}
+                      onChange={() => handleCourseToggle(course.id)}
+                      className="sr-only"
+                      disabled={loading}
+                    />
+                    <div className="flex items-center w-full">
+                      <div
+                        className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center ${
+                          formData.courses.includes(course.id)
+                            ? "border-green-500 bg-green-500"
+                            : "border-gray-300"
+                        }`}
+                      >
+                        {formData.courses.includes(course.id) && (
+                          <Check className="text-white" size={12} />
+                        )}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        Ниво {course.level} • {course.videos.length} видеа
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-800 text-sm">
+                          {course.title}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Ниво {course.level} • {course.videos?.length || 0} видеа
+                        </div>
                       </div>
+                      <div className="text-2xl">{course.icon}</div>
                     </div>
-                    <div className="text-2xl">{course.icon}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}
@@ -417,7 +453,7 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || coursesLoading}
               className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
             >
               {loading ? (
@@ -444,7 +480,9 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
                   hasPassword: !!formData.password,
                   passwordLength: formData.password.length,
                   role: formData.role,
-                  coursesCount: formData.courses.length
+                  coursesCount: formData.courses.length,
+                  availableCoursesCount: availableCourses.length,
+                  coursesLoading
                 }, null, 2)}
               </pre>
             </div>
