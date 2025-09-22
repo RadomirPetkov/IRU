@@ -1,6 +1,5 @@
 // src/firebase/courses.js - Поправена версия без дублирани exports
 import { 
-  getFirestore, 
   doc, 
   getDoc, 
   setDoc, 
@@ -10,10 +9,7 @@ import {
   where, 
   getDocs,
   deleteDoc,
-  arrayUnion,
-  arrayRemove,
   serverTimestamp,
-  orderBy
 } from "firebase/firestore";
 import { db } from "./firestore";
 
@@ -775,9 +771,3 @@ export const migrateLegacyCourse = async (courseId, adminEmail) => {
     return { success: false, error: 'Грешка при миграция на курс' };
   }
 };
-
-// ============= ЕКСПОРТ НА ВСИЧКИ ФУНКЦИИ =============
-
-// ВНИМАНИЕ: Експортираме функциите само ВЕДНЪЖ за да избегнем грешка "already exported"
-
-// НЕ ДУБЛИРАМЕ ЕКСПОРТИТЕ - има само един export в края

@@ -8,7 +8,6 @@ import {
   X, 
   Play, 
   FileText,
-  GripVertical,
   Eye,
   EyeOff,
   AlertCircle,
@@ -16,8 +15,6 @@ import {
   Clock,
   BookOpen,
   Video,
-  ArrowUp,
-  ArrowDown,
   RotateCcw
 } from 'lucide-react';
 import {
@@ -26,10 +23,7 @@ import {
   updateCourse,
   deleteCourse,
   addContentToCourse,
-  updateContentInCourse,
   removeContentFromCourse,
-  validateVideoUrl,
-  validateAssignmentData,
   getCourseContentStats,
   migrateLegacyCourse,
   CONTENT_TYPES,

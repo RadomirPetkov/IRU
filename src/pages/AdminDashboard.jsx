@@ -6,7 +6,6 @@ import {
   Users, 
   BookOpen, 
   TrendingUp, 
-  Award,
   Calendar,
   Clock,
   Eye,
@@ -18,9 +17,7 @@ import {
   Activity,
   AlertCircle,
   Video,
-  Edit,
-  Layers,
-  X  // Added missing X import
+  X
 } from 'lucide-react';
 import {
   getAdminUsersList,
@@ -44,7 +41,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, users, courses
+  const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState(null);
 
   useEffect(() => {
