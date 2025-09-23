@@ -1,4 +1,4 @@
-// src/components/navigation.jsx - Подобрена версия с Bootstrap фикс
+// src/components/navigation.jsx - Финална версия с мобилно падащо меню
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,8 @@ import { LogIn } from 'lucide-react';
 export const Navigation = (props) => {
   const { isAuthenticated, user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
 
   const handleLoginSuccess = () => {
@@ -19,39 +21,162 @@ export const Navigation = (props) => {
     // Логиката за logout се обработва в UserProfile компонента
   };
 
-  // Проверяваме дали сме на началната страница за да използваме anchor links
-  const isHomePage = location.pathname === '/';
-
-  // Гарантираме че Bootstrap JavaScript работи правилно
+  // Проверяваме дали сме на мобилно устройство
   useEffect(() => {
-    // Проверяваме дали jQuery и Bootstrap са заредени
-    const ensureBootstrapWorks = () => {
-      if (typeof window.$ !== 'undefined' && window.$.fn.collapse) {
-        // Bootstrap е зареден, активираме collapse функционалността
-        window.$('.navbar-toggle').off('click').on('click', function() {
-          const target = window.$(this).attr('data-target');
-          window.$(target).collapse('toggle');
-        });
+    const checkIsMobile = () => {
+      // Множество проверки за мобилно устройство
+      const mediaQuery = window.matchMedia('(max-width: 767px)');
+      const windowWidth = window.innerWidth;
+      const userAgent = navigator.userAgent;
+      
+      // Проверяваме дали е мобилно по различни начини
+      const isMobileByMedia = mediaQuery.matches;
+      const isMobileByWidth = windowWidth <= 767;
+      const isMobileByAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      const finalIsMobile = isMobileByMedia || isMobileByWidth || (isMobileByAgent && windowWidth <= 1024);
+      
+      setIsMobile(finalIsMobile);
+      return finalIsMobile;
+    };
+
+    // Изчакваме малко преди първата проверка
+    const timer = setTimeout(() => {
+      checkIsMobile();
+    }, 100);
+    
+    // Проверяваме и поправяме viewport meta tag
+    const checkViewport = () => {
+      let viewport = document.querySelector('meta[name="viewport"]');
+      if (!viewport) {
+        viewport = document.createElement('meta');
+        viewport.name = 'viewport';
+        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        document.head.appendChild(viewport);
       } else {
-        // Опитваме отново след малко
-        setTimeout(ensureBootstrapWorks, 100);
+        // Уверяваме се че има правилното съдържание
+        if (!viewport.content.includes('width=device-width')) {
+          viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        }
+      }
+    };
+    
+    checkViewport();
+    
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handleMediaChange = (e) => {
+      const newIsMobile = checkIsMobile();
+      setIsMobile(newIsMobile);
+    };
+    
+    // Използваме addEventListener вместо addListener (deprecated)
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+    } else {
+      // Fallback за стари браузъри
+      mediaQuery.addListener(handleMediaChange);
+    }
+    
+    return () => {
+      clearTimeout(timer);
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      } else {
+        mediaQuery.removeListener(handleMediaChange);
+      }
+    };
+  }, []);
+
+  // Затваряне на мобилното меню при промяна на route
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Затваряне на мобилното меню при промяна от mobile към desktop
+  useEffect(() => {
+    if (!isMobile) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [isMobile]);
+
+  // Затваряне на мобилното меню при клик извън него
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isMobile && isMobileMenuOpen && 
+          !event.target.closest('.navbar-collapse') && 
+          !event.target.closest('.navbar-toggle') &&
+          !event.target.closest('.mobile-menu-button')) {
+        setIsMobileMenuOpen(false);
       }
     };
 
-    ensureBootstrapWorks();
-  }, []);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isMobile, isMobileMenuOpen]);
+
+  // Проверяваме дали сме на началната страница за да използваме anchor links
+  const isHomePage = location.pathname === '/';
+
+  // Toggle функция за мобилното меню
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // Функция за затваряне на мобилното меню при клик на link
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  // Bootstrap navbar работи с jQuery, но можем да го симулираме
+  useEffect(() => {
+    // Симулираме Bootstrap collapse функционалността
+    const navbar = document.querySelector('#bs-example-navbar-collapse-1');
+    
+    if (navbar) {
+      if (isMobile && isMobileMenuOpen) {
+        navbar.classList.add('in');
+        navbar.classList.remove('collapse');
+        navbar.style.height = 'auto';
+        navbar.style.display = 'block';
+        navbar.style.overflow = 'visible';
+      } else if (isMobile && !isMobileMenuOpen) {
+        navbar.classList.remove('in');
+        navbar.classList.add('collapse');
+        navbar.style.height = '0px';
+        navbar.style.overflow = 'hidden';
+        navbar.style.display = 'none';
+      } else if (!isMobile) {
+        navbar.classList.remove('collapse', 'in');
+        navbar.style.height = 'auto';
+        navbar.style.display = 'block';
+        navbar.style.overflow = 'visible';
+      }
+    }
+  }, [isMobile, isMobileMenuOpen]);
 
   return (
     <>
       <nav id="menu" className="navbar navbar-default navbar-fixed-top">
         <div className="container">
           <div className="navbar-header">
+            {/* Mobile Menu Button - в горния десен ъгъл */}
             <button
               type="button"
-              className="navbar-toggle collapsed"
-              data-toggle="collapse"
-              data-target="#bs-example-navbar-collapse-1"
-              aria-expanded="false"
+              className="mobile-menu-button md:hidden"
+              style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 50 }}
+              onClick={toggleMobileMenu}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="bs-example-navbar-collapse-1"
+            >
+              {isMobileMenuOpen ? '✕ Затвори' : '☰ Меню'}
+            </button>
+            
+            {/* Скрит Bootstrap бутон за съвместимост */}
+            <button
+              type="button"
+              className="navbar-toggle collapsed hidden"
+              onClick={toggleMobileMenu}
+              aria-expanded={isMobileMenuOpen}
               aria-controls="bs-example-navbar-collapse-1"
             >
               <span className="sr-only">Toggle navigation</span>
@@ -59,17 +184,20 @@ export const Navigation = (props) => {
               <span className="icon-bar"></span>
               <span className="icon-bar"></span>
             </button>
-            <Link to="/">
+            
+            {/* Logo */}
+            <Link to="/" onClick={closeMobileMenu} className="navbar-brand">
               <img
                 src="./img/logo/logo14.jpg"
-                alt=""
+                alt="Лого"
                 className="w-[100px] absolute top-0 rounded-full sm:w-[150px] sm:top-[-40px] md:w-[200px]"
               />
             </Link>
           </div>
 
-          <div
-            className="collapse navbar-collapse"
+          {/* Navigation Menu */}
+          <div 
+            className={`collapse navbar-collapse ${isMobileMenuOpen ? 'in' : ''}`}
             id="bs-example-navbar-collapse-1"
           >
             <ul className="nav navbar-nav navbar-right text-3xl md:text-xl lg:text-3xl">
@@ -77,27 +205,27 @@ export const Navigation = (props) => {
                 // Anchor links за началната страница
                 <>
                   <li>
-                    <a href="#features" className="page-scroll">
+                    <a href="#features" className="page-scroll" onClick={closeMobileMenu}>
                       Какво предлагаме
                     </a>
                   </li>
                   <li>
-                    <a href="#about" className="page-scroll">
+                    <a href="#about" className="page-scroll" onClick={closeMobileMenu}>
                       За нас
                     </a>
                   </li>
                   <li>
-                    <a href="#courses" className="page-scroll">
+                    <a href="#courses" className="page-scroll" onClick={closeMobileMenu}>
                       Курсове
                     </a>
                   </li>
                   <li>
-                    <a href="#team" className="page-scroll">
+                    <a href="#team" className="page-scroll" onClick={closeMobileMenu}>
                       Нашият екип
                     </a>
                   </li>
                   <li>
-                    <Link to="/courses" className="page-scroll">
+                    <Link to="/courses" className="page-scroll" onClick={closeMobileMenu}>
                       Обучения
                       {!isAuthenticated && (
                         <span className="ml-1 text-xs bg-yellow-500 text-white px-2 py-1 rounded-full">
@@ -107,7 +235,7 @@ export const Navigation = (props) => {
                     </Link>
                   </li>
                   <li>
-                    <a href="#contact" className="page-scroll">
+                    <a href="#contact" className="page-scroll" onClick={closeMobileMenu}>
                       Контакти
                     </a>
                   </li>
@@ -116,22 +244,22 @@ export const Navigation = (props) => {
                 // Route links за другите страници
                 <>
                   <li>
-                    <Link to="/#features" className="page-scroll">
+                    <Link to="/#features" className="page-scroll" onClick={closeMobileMenu}>
                       Какво предлагаме
                     </Link>
                   </li>
                   <li>
-                    <Link to="/#about" className="page-scroll">
+                    <Link to="/#about" className="page-scroll" onClick={closeMobileMenu}>
                       За нас
                     </Link>
                   </li>
                   <li>
-                    <Link to="/#courses" className="page-scroll">
+                    <Link to="/#courses" className="page-scroll" onClick={closeMobileMenu}>
                       Курсове
                     </Link>
                   </li>
                   <li>
-                    <Link to="/#team" className="page-scroll">
+                    <Link to="/#team" className="page-scroll" onClick={closeMobileMenu}>
                       Нашият екип
                     </Link>
                   </li>
@@ -143,6 +271,7 @@ export const Navigation = (props) => {
                           ? 'text-blue-600 font-semibold' 
                           : ''
                       }`}
+                      onClick={closeMobileMenu}
                     >
                       Обучения
                       {!isAuthenticated && (
@@ -153,7 +282,7 @@ export const Navigation = (props) => {
                     </Link>
                   </li>
                   <li>
-                    <Link to="/#contact" className="page-scroll">
+                    <Link to="/#contact" className="page-scroll" onClick={closeMobileMenu}>
                       Контакти
                     </Link>
                   </li>
@@ -161,16 +290,21 @@ export const Navigation = (props) => {
               )}
               
               {/* Authentication Section */}
-              <li className="flex items-center ml-4">
+              <li className="navbar-auth-item">
                 {isAuthenticated ? (
-                  <UserProfile user={user} onLogout={handleLogout} />
+                  <div className="navbar-user-profile">
+                    <UserProfile user={user} onLogout={handleLogout} />
+                  </div>
                 ) : (
                   <button
-                    onClick={() => setShowLogin(true)}
-                    className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-700 text-white px-4 py-2 rounded-full hover:from-purple-700 hover:to-blue-800 transition-all duration-200 shadow-md"
+                    onClick={() => {
+                      setShowLogin(true);
+                      closeMobileMenu();
+                    }}
+                    className="navbar-login-btn btn btn-primary"
                   >
-                    <LogIn size={16} />
-                    <span className="hidden md:inline">Вход</span>
+                    <LogIn size={16} className="login-icon" />
+                    <span className="login-text">Вход</span>
                   </button>
                 )}
               </li>
