@@ -1,4 +1,4 @@
-// src/components/navigation.jsx - Финална версия с мобилно падащо меню
+// src/components/navigation.jsx - Поправена версия без дублиран мобилен бутон
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from '../contexts/AuthContext';
@@ -24,12 +24,10 @@ export const Navigation = (props) => {
   // Проверяваме дали сме на мобилно устройство
   useEffect(() => {
     const checkIsMobile = () => {
-      // Множество проверки за мобилно устройство
       const mediaQuery = window.matchMedia('(max-width: 767px)');
       const windowWidth = window.innerWidth;
       const userAgent = navigator.userAgent;
       
-      // Проверяваме дали е мобилно по различни начини
       const isMobileByMedia = mediaQuery.matches;
       const isMobileByWidth = windowWidth <= 767;
       const isMobileByAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
@@ -40,12 +38,10 @@ export const Navigation = (props) => {
       return finalIsMobile;
     };
 
-    // Изчакваме малко преди първата проверка
     const timer = setTimeout(() => {
       checkIsMobile();
     }, 100);
     
-    // Проверяваме и поправяме viewport meta tag
     const checkViewport = () => {
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
@@ -54,7 +50,6 @@ export const Navigation = (props) => {
         viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
         document.head.appendChild(viewport);
       } else {
-        // Уверяваме се че има правилното съдържание
         if (!viewport.content.includes('width=device-width')) {
           viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
         }
@@ -69,11 +64,9 @@ export const Navigation = (props) => {
       setIsMobile(newIsMobile);
     };
     
-    // Използваме addEventListener вместо addListener (deprecated)
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleMediaChange);
     } else {
-      // Fallback за стари браузъри
       mediaQuery.addListener(handleMediaChange);
     }
     
@@ -129,7 +122,6 @@ export const Navigation = (props) => {
 
   // Bootstrap navbar работи с jQuery, но можем да го симулираме
   useEffect(() => {
-    // Симулираме Bootstrap collapse функционалността
     const navbar = document.querySelector('#bs-example-navbar-collapse-1');
     
     if (navbar) {
@@ -157,40 +149,36 @@ export const Navigation = (props) => {
   return (
     <>
       <nav id="menu" className="navbar navbar-default navbar-fixed-top">
-        <div className="container">
+        <div className="container w[100%]">
           <div className="navbar-header">
-            {/* Mobile Menu Button - в горния десен ъгъл */}
-            <button
-              type="button"
-              className="mobile-menu-button md:hidden"
-              style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 50 }}
-              onClick={toggleMobileMenu}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="bs-example-navbar-collapse-1"
-            >
-              {isMobileMenuOpen ? '✕ Затвори' : '☰ Меню'}
-            </button>
-            
-            {/* Скрит Bootstrap бутон за съвместимост */}
-            <button
-              type="button"
-              className="navbar-toggle collapsed hidden"
-              onClick={toggleMobileMenu}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="bs-example-navbar-collapse-1"
-            >
-              <span className="sr-only">Toggle navigation</span>
-              <span className="icon-bar"></span>
-              <span className="icon-bar"></span>
-              <span className="icon-bar"></span>
-            </button>
+            {/* ЕДИНСТВЕН МОБИЛЕН БУТОН - в дясната страна */}
+            {isMobile && (
+              <button
+                type="button"
+                className="navbar-toggle collapsed"
+                onClick={toggleMobileMenu}
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="bs-example-navbar-collapse-1"
+                style={{
+                  position: 'absolute',
+                  right: '15px',
+                  top: '8px',
+                  zIndex: 1000
+                }}
+              >
+                <span className="sr-only">Toggle navigation</span>
+                <span className="icon-bar"></span>
+                <span className="icon-bar"></span>
+                <span className="icon-bar"></span>
+              </button>
+            )}
             
             {/* Logo */}
             <Link to="/" onClick={closeMobileMenu} className="navbar-brand">
               <img
                 src="./img/logo/logo14.jpg"
                 alt="Лого"
-                className="w-[100px] absolute top-0 rounded-full sm:w-[150px] sm:top-[-40px] md:w-[200px]"
+                className="w-[100px] absolute top-0 left-10 rounded-full sm:w-[150px] sm:top-[-40px] md:w-[160px]"
               />
             </Link>
           </div>

@@ -1,4 +1,4 @@
-// src/pages/CoursesPage.jsx - Fixed imports
+// src/pages/CoursesPage.jsx - Поправена версия с админ панел
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -16,12 +16,12 @@ import {
   Shield,
   RefreshCw,
   AlertCircle,
-  Settings  // Added missing Settings import
+  Settings
 } from 'lucide-react';
 import { courses, reloadCourses, checkForUpdates } from '../data/coursesData';
 
 const CoursesPage = () => {
-  const { isAuthenticated, user, userProfile, hasAccessToCourse } = useAuth();
+  const { isAuthenticated, user, userProfile, hasAccessToCourse, hasPermission } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [coursesData, setCoursesData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -110,17 +110,20 @@ const CoursesPage = () => {
     setShowLogin(false);
   };
 
+  // Проверяваме дали потребителят е админ
+  const isAdmin = isAuthenticated && hasPermission && hasPermission('view_analytics');
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
         {/* Breadcrumb Navigation */}
         <div className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 max-w-[1500px] py-4">
+          <div className="container mx-auto px-4 max-w-[1500px] mt-96 py-4">
             <Link 
               to="/" 
               className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
             >
-              <ArrowLeft size={20} className="mr-2" />
+              <ArrowLeft size={20} className="mr-2 mt-96" />
               Обратно към началото
             </Link>
           </div>
@@ -258,6 +261,18 @@ const CoursesPage = () => {
                 <RefreshCw size={16} className={`mr-1 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Презарежда...' : 'Обнови'}
               </button>
+              
+              {/* АДМИН ПАНЕЛ БУТОН */}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="flex items-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 text-sm font-medium shadow-md"
+                  title="Административен панел"
+                >
+                  <Settings size={14} className="mr-1" />
+                  Админ панел
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -502,7 +517,8 @@ const CoursesPage = () => {
                   {refreshing ? 'Презарежда...' : 'Презареди данните'}
                 </button>
                 
-                {userProfile?.roleInfo && userProfile.roleInfo.name === 'Администратор' && (
+                {/* АДМИН ПАНЕЛ БУТОН */}
+                {isAdmin && (
                   <Link
                     to="/admin"
                     className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center"
