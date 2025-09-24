@@ -118,12 +118,12 @@ const CoursesPage = () => {
       <div className="min-h-screen bg-gray-50 pt-20">
         {/* Breadcrumb Navigation */}
         <div className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 max-w-[1500px] mt-96 py-4">
+          <div className="container mx-auto px-4 max-w-[1500px] mt-24 py-4">
             <Link 
               to="/" 
               className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
             >
-              <ArrowLeft size={20} className="mr-2 mt-96" />
+              <ArrowLeft size={20} className="mr-2" />
               Обратно към началото
             </Link>
           </div>
@@ -228,7 +228,7 @@ const CoursesPage = () => {
     <div className="min-h-screen bg-gray-50 pt-20">
       {/* Breadcrumb Navigation */}
       <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 max-w-[1500px] py-4">
+        <div className="container mx-auto px-4 max-w-[1500px] py-4 mt-20">
           <div className="flex items-center justify-between">
             <Link 
               to="/" 
