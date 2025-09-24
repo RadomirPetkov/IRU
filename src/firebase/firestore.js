@@ -330,7 +330,7 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
   }
 };
 
-// НОВА ФУНКЦИЯ: Премахване на завършването на видео
+// Премахване на завършването на видео
 export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
   try {
     if (!userEmail || !courseId || !videoId) {
@@ -549,8 +549,5 @@ export const getActivityStats = async (userEmail, days = 30) => {
     return { success: false, error: 'Грешка при получаване на статистики' };
   }
 };
-
-// Експортиране на новата функция
-export { markVideoAsUncompleted };
 
 export default db;
