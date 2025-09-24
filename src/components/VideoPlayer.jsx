@@ -1,7 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, Settings } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, Settings, CheckCircle, X } from 'lucide-react';
 
-const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => {
+const VideoPlayer = ({ 
+  videoUrl, 
+  title, 
+  autoplay = false, 
+  controls = true,
+  isCompleted = false,
+  onVideoCompleted,
+  onVideoProgress,
+  onMarkUncompleted 
+}) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -10,6 +19,9 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
   const [volume, setVolume] = useState(1);
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [watchProgress, setWatchProgress] = useState(0);
+  const [hasTriggeredCompletion, setHasTriggeredCompletion] = useState(false);
+  const [showCompletionNotification, setShowCompletionNotification] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -18,6 +30,11 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
       setIsPlaying(true);
     }
   }, [autoplay, videoUrl]);
+
+  useEffect(() => {
+    // Ако видеото вече е завършено, не триггерваме автоматично завършване
+    setHasTriggeredCompletion(isCompleted);
+  }, [isCompleted]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -52,7 +69,36 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (video) {
-      setCurrentTime(video.currentTime);
+      const current = video.currentTime;
+      const total = video.duration;
+      
+      setCurrentTime(current);
+      
+      if (total > 0) {
+        const progress = (current / total) * 100;
+        setWatchProgress(progress);
+        
+        // Извикваме callback за прогрес (за статистики)
+        if (onVideoProgress) {
+          onVideoProgress(current, total, progress);
+        }
+        
+        // Проверяваме дали сме достигнали 90% и не сме вече триггерирали завършване
+        if (progress >= 90 && !hasTriggeredCompletion && !isCompleted) {
+          console.log(`📹 Видео достигна ${Math.round(progress)}% - автоматично маркиране като завършено`);
+          setHasTriggeredCompletion(true);
+          setShowCompletionNotification(true);
+          
+          if (onVideoCompleted) {
+            onVideoCompleted();
+          }
+          
+          // Скриваме нотификацията след 3 секунди
+          setTimeout(() => {
+            setShowCompletionNotification(false);
+          }, 3000);
+        }
+      }
     }
   };
 
@@ -105,6 +151,18 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
     if (video) {
       video.currentTime = 0;
       setCurrentTime(0);
+      setWatchProgress(0);
+      // При рестарт не нулираме hasTriggeredCompletion ако видеото е вече завършено
+      if (!isCompleted) {
+        setHasTriggeredCompletion(false);
+      }
+    }
+  };
+
+  const handleMarkUncompleted = () => {
+    if (onMarkUncompleted) {
+      setHasTriggeredCompletion(false);
+      onMarkUncompleted();
     }
   };
 
@@ -133,7 +191,7 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
     } else if (url.includes('youtu.be/')) {
       videoId = url.split('youtu.be/')[1].split('?')[0];
     }
-    return `https://www.youtube.com/embed/${videoId}`;
+    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
   };
 
   // Функция за конвертиране на Vimeo URL в embed URL
@@ -144,24 +202,73 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
 
   const videoType = getVideoType(videoUrl);
 
+  // За YouTube видеа създаваме custom player wrapper
   if (videoType === 'youtube') {
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         {title && (
-          <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-700">
+          <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-700 relative">
             <h3 className="text-xl font-bold text-white">{title}</h3>
+            
+            {/* Completion Status */}
+            {isCompleted && (
+              <div className="absolute top-4 right-4 flex items-center space-x-2">
+                <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm flex items-center">
+                  <CheckCircle size={16} className="mr-1" />
+                  Завършено
+                </div>
+                {onMarkUncompleted && (
+                  <button
+                    onClick={handleMarkUncompleted}
+                    className="bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                    title="Премахни завършването"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
-        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-          <iframe
-            className="absolute top-0 left-0 w-full h-full"
-            src={getYouTubeEmbedUrl(videoUrl)}
-            title={title || "YouTube Video"}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          ></iframe>
+        
+        <div className="relative">
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src={getYouTubeEmbedUrl(videoUrl)}
+              title={title || "YouTube Video"}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+          
+          {/* Progress Overlay для YouTube */}
+          {watchProgress > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
+              <div className="bg-white/20 rounded-full h-2">
+                <div 
+                  className="bg-blue-500 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${watchProgress}%` }}
+                ></div>
+              </div>
+              <div className="text-white text-xs mt-1 text-center">
+                Прогрес: {Math.round(watchProgress)}%
+              </div>
+            </div>
+          )}
         </div>
+        
+        {/* Completion Notification */}
+        {showCompletionNotification && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-6 py-4 rounded-lg shadow-xl flex items-center z-50">
+            <CheckCircle className="mr-2" size={24} />
+            <div>
+              <div className="font-bold">Видео завършено! 🎉</div>
+              <div className="text-sm">Автоматично маркирано при 90%</div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -170,10 +277,30 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         {title && (
-          <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-700">
+          <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-700 relative">
             <h3 className="text-xl font-bold text-white">{title}</h3>
+            
+            {/* Completion Status */}
+            {isCompleted && (
+              <div className="absolute top-4 right-4 flex items-center space-x-2">
+                <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm flex items-center">
+                  <CheckCircle size={16} className="mr-1" />
+                  Завършено
+                </div>
+                {onMarkUncompleted && (
+                  <button
+                    onClick={handleMarkUncompleted}
+                    className="bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                    title="Премахни завършването"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
+        
         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
           <iframe
             className="absolute top-0 left-0 w-full h-full"
@@ -190,10 +317,29 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
 
   // За директни видео файлове
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden relative">
       {title && (
-        <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-700">
+        <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-700 relative">
           <h3 className="text-xl font-bold text-white">{title}</h3>
+          
+          {/* Completion Status */}
+          {isCompleted && (
+            <div className="absolute top-4 right-4 flex items-center space-x-2">
+              <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm flex items-center">
+                <CheckCircle size={16} className="mr-1" />
+                Завършено
+              </div>
+              {onMarkUncompleted && (
+                <button
+                  onClick={handleMarkUncompleted}
+                  className="bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                  title="Премахни завършването"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
       
@@ -217,12 +363,19 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
           <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
             {/* Progress Bar */}
             <div 
-              className="w-full bg-gray-600 h-2 rounded-full mb-4 cursor-pointer"
+              className="w-full bg-gray-600 h-2 rounded-full mb-4 cursor-pointer relative"
               onClick={handleSeek}
             >
               <div 
                 className="bg-blue-500 h-full rounded-full transition-all duration-100"
                 style={{ width: `${(currentTime / duration) * 100}%` }}
+              ></div>
+              
+              {/* Completion threshold indicator */}
+              <div 
+                className="absolute top-0 h-full w-0.5 bg-green-400"
+                style={{ left: '90%' }}
+                title="90% - автоматично завършване"
               ></div>
             </div>
             
@@ -265,6 +418,10 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
                 <span className="text-sm">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
+                
+                <span className="text-sm">
+                  ({Math.round(watchProgress)}%)
+                </span>
               </div>
               
               <button
@@ -277,6 +434,17 @@ const VideoPlayer = ({ videoUrl, title, autoplay = false, controls = true }) => 
           </div>
         )}
       </div>
+      
+      {/* Completion Notification */}
+      {showCompletionNotification && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-6 py-4 rounded-lg shadow-xl flex items-center z-50">
+          <CheckCircle className="mr-2" size={24} />
+          <div>
+            <div className="font-bold">Видео завършено! 🎉</div>
+            <div className="text-sm">Автоматично маркирано при 90%</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

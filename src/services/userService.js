@@ -1,4 +1,4 @@
-// src/services/userService.js - Production готова версия (БЕЗ ДЕМО ДАННИ)
+// src/services/userService.js - Production готова версия с функция за премахване на завършването
 import {
     getUserProfile,
     createUserProfile,
@@ -9,6 +9,7 @@ import {
     getCourseProgress as getFirestoreCourseProgress,
     recordVideoWatch,
     markVideoAsCompleted,
+    markVideoAsUncompleted, // НОВА ФУНКЦИЯ
     getCompletedVideos,
     startUserSession,
     endUserSession,
@@ -393,6 +394,33 @@ import {
       return { success: false, error: 'Грешка при завършване на видео' };
     }
   };
+
+  /**
+   * НОВА ФУНКЦИЯ: Премахване на завършването на видео
+   */
+  export const uncompleteVideo = async (userEmail, courseId, videoId) => {
+    try {
+      if (!userEmail || !courseId || !videoId) {
+        return { success: false, error: 'Невалидни данни' };
+      }
+
+      console.log(`🔄 Премахване на завършването на видео: ${videoId} за потребител ${userEmail}`);
+      
+      // Използваме новата функция от firestore.js
+      const result = await markVideoAsUncompleted(userEmail, courseId, videoId);
+      
+      if (result.success) {
+        console.log(`✅ Видео ${videoId} успешно премахнато от завършени`);
+      } else {
+        console.error(`❌ Грешка при премахване на завършването: ${result.error}`);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error uncompleting video:', error);
+      return { success: false, error: 'Грешка при премахване на завършването на видео' };
+    }
+  };
   
   /**
    * Получаване на завършени видеа за курс
@@ -506,6 +534,7 @@ import {
     // Видеа
     startVideo,
     completeVideo,
+    uncompleteVideo, // НОВА ФУНКЦИЯ
     getUserCompletedVideos,
     
     // Помощни

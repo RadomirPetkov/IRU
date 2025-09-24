@@ -1,4 +1,4 @@
-// src/pages/EnhancedCourseDetailPage.jsx
+// src/components/EnhancedCourseDetailPage.jsx - Обновена с автоматично маркиране и премахване
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,7 +22,9 @@ import {
   AlertCircle,
   FileText,
   Video,
-  ArrowRight
+  ArrowRight,
+  X,
+  Undo
 } from 'lucide-react';
 import { getCourseById, reloadCourses } from '../data/coursesData';
 import { CONTENT_TYPES } from '../firebase/courses';
@@ -31,6 +33,7 @@ import {
   getCourseProgress,
   startVideo,
   completeVideo,
+  uncompleteVideo, // НОВА ФУНКЦИЯ
   getUserCompletedVideos
 } from '../services/userService';
 
@@ -45,6 +48,7 @@ const EnhancedCourseDetailPage = () => {
   const [enrolling, setEnrolling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [videoProgress, setVideoProgress] = useState({});
 
   // Зареждане на данни при монтиране на компонента
   useEffect(() => {
@@ -207,14 +211,32 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  const markVideoAsCompleted = async (contentIndex) => {
+  // НОВА ФУНКЦИЯ: Обработка на прогреса на видеото
+  const handleVideoProgress = (currentTime, totalTime, progressPercent) => {
     const content = getCourseContent(course);
-    const selectedContent = content[contentIndex];
+    const selectedContent = content[selectedContentIndex];
+    
+    if (selectedContent && selectedContent.type === CONTENT_TYPES.VIDEO) {
+      setVideoProgress(prev => ({
+        ...prev,
+        [selectedContent.id]: {
+          currentTime,
+          totalTime,
+          progressPercent
+        }
+      }));
+    }
+  };
+
+  // ОБНОВЕНА ФУНКЦИЯ: Автоматично маркиране при достигане на 90%
+  const handleVideoCompleted = async () => {
+    const content = getCourseContent(course);
+    const selectedContent = content[selectedContentIndex];
     
     if (!user?.email || !selectedContent || selectedContent.type !== CONTENT_TYPES.VIDEO) return;
     
     try {
-      console.log(`✅ Маркиране на видео като завършено: ${selectedContent.title}`);
+      console.log(`✅ Автоматично маркиране на видео като завършено: ${selectedContent.title}`);
       const result = await completeVideo(user.email, courseId, selectedContent.id);
       
       if (result.success) {
@@ -230,10 +252,70 @@ const EnhancedCourseDetailPage = () => {
           setCourseProgress(progressResult.data);
         }
         
-        console.log(`🎉 Видео "${selectedContent.title}" успешно маркирано като завършено!`);
+        console.log(`🎉 Видео "${selectedContent.title}" автоматично маркирано като завършено!`);
       }
     } catch (error) {
-      console.error('❌ Грешка при маркиране на видео:', error);
+      console.error('❌ Грешка при автоматично маркиране на видео:', error);
+    }
+  };
+
+  // НОВА ФУНКЦИЯ: Ръчно маркиране като завършено
+  const markVideoAsCompleted = async (contentIndex) => {
+    const content = getCourseContent(course);
+    const selectedContent = content[contentIndex];
+    
+    if (!user?.email || !selectedContent || selectedContent.type !== CONTENT_TYPES.VIDEO) return;
+    
+    try {
+      console.log(`✅ Ръчно маркиране на видео като завършено: ${selectedContent.title}`);
+      const result = await completeVideo(user.email, courseId, selectedContent.id);
+      
+      if (result.success) {
+        setCompletedContent(prev => {
+          const newSet = new Set([...prev, selectedContent.id]);
+          console.log('📊 Обновени завършени елементи:', Array.from(newSet));
+          return newSet;
+        });
+        
+        // Презареждаме прогреса
+        const progressResult = await getCourseProgress(user.email, courseId);
+        if (progressResult.success) {
+          setCourseProgress(progressResult.data);
+        }
+        
+        console.log(`🎉 Видео "${selectedContent.title}" ръчно маркирано като завършено!`);
+      }
+    } catch (error) {
+      console.error('❌ Грешка при ръчно маркиране на видео:', error);
+    }
+  };
+
+  // НОВА ФУНКЦИЯ: Премахване на завършването
+  const handleMarkVideoUncompleted = async (contentId) => {
+    if (!user?.email || !contentId) return;
+    
+    try {
+      console.log(`🔄 Премахване на завършването на видео: ${contentId}`);
+      const result = await uncompleteVideo(user.email, courseId, contentId);
+      
+      if (result.success) {
+        setCompletedContent(prev => {
+          const newSet = new Set([...prev]);
+          newSet.delete(contentId);
+          console.log('📊 Обновени завършени елементи:', Array.from(newSet));
+          return newSet;
+        });
+        
+        // Презареждаме прогреса
+        const progressResult = await getCourseProgress(user.email, courseId);
+        if (progressResult.success) {
+          setCourseProgress(progressResult.data);
+        }
+        
+        console.log(`🔄 Видео завършването премахнато успешно!`);
+      }
+    } catch (error) {
+      console.error('❌ Грешка при премахване на завършването:', error);
     }
   };
 
@@ -539,6 +621,10 @@ const EnhancedCourseDetailPage = () => {
                           videoUrl={selectedContent.url}
                           title={selectedContent.title}
                           autoplay={false}
+                          isCompleted={isContentCompleted(selectedContent)}
+                          onVideoCompleted={handleVideoCompleted} // Автоматично маркиране
+                          onVideoProgress={handleVideoProgress} // Проследяване на прогреса
+                          onMarkUncompleted={() => handleMarkVideoUncompleted(selectedContent.id)} // Премахване на завършването
                         />
                         
                         <div className="p-6">
@@ -556,14 +642,31 @@ const EnhancedCourseDetailPage = () => {
                                   <Clock size={16} className="mr-1" />
                                   {selectedContent.duration || '0:00'}
                                 </span>
+                                {/* Показваме прогреса на видеото ако има такъв */}
+                                {videoProgress[selectedContent.id] && (
+                                  <span className="flex items-center">
+                                    <BarChart size={16} className="mr-1" />
+                                    {Math.round(videoProgress[selectedContent.id].progressPercent)}%
+                                  </span>
+                                )}
                               </div>
                             </div>
                             
                             <div className="flex items-center space-x-3">
                               {isContentCompleted(selectedContent) ? (
-                                <div className="flex items-center text-green-600 bg-green-50 px-3 py-2 rounded-full">
-                                  <CheckCircle size={16} className="mr-1" />
-                                  <span className="text-sm font-medium">Завършено</span>
+                                <div className="flex items-center space-x-2">
+                                  <div className="flex items-center text-green-600 bg-green-50 px-3 py-2 rounded-full">
+                                    <CheckCircle size={16} className="mr-1" />
+                                    <span className="text-sm font-medium">Завършено</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleMarkVideoUncompleted(selectedContent.id)}
+                                    className="flex items-center text-red-600 bg-red-50 px-3 py-2 rounded-full hover:bg-red-100 transition-colors"
+                                    title="Премахни завършването"
+                                  >
+                                    <Undo size={16} className="mr-1" />
+                                    <span className="text-sm font-medium">Отмени</span>
+                                  </button>
                                 </div>
                               ) : (
                                 <button
@@ -581,6 +684,16 @@ const EnhancedCourseDetailPage = () => {
                               {selectedContent.description}
                             </p>
                           )}
+
+                          {/* Информация за автоматично маркиране */}
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center text-blue-700">
+                              <AlertCircle size={16} className="mr-2" />
+                              <span className="text-sm">
+                                Видеото ще се маркира автоматично като завършено при достигане на 90% от съдържанието.
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -663,15 +776,44 @@ const EnhancedCourseDetailPage = () => {
                                 }
                               </span>
                               {isContentCompleted(item) && (
-                                <span className="text-xs text-green-600 font-medium">
-                                  Готово ✓
-                                </span>
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-xs text-green-600 font-medium">
+                                    Готово ✓
+                                  </span>
+                                  {/* Бутон за премахване на завършването в списъка */}
+                                  {item.type === CONTENT_TYPES.VIDEO && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMarkVideoUncompleted(item.id);
+                                      }}
+                                      className="text-red-500 hover:text-red-700 p-0.5 rounded"
+                                      title="Премахни завършването"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
                             {item.description && (
                               <p className="text-xs text-gray-500 mt-1 line-clamp-2">
                                 {item.description}
                               </p>
+                            )}
+                            {/* Показваме прогреса на видеото в списъка */}
+                            {item.type === CONTENT_TYPES.VIDEO && videoProgress[item.id] && !isContentCompleted(item) && (
+                              <div className="mt-1">
+                                <div className="w-full bg-gray-200 rounded-full h-1">
+                                  <div 
+                                    className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                                    style={{ width: `${videoProgress[item.id].progressPercent}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {Math.round(videoProgress[item.id].progressPercent)}% гледано
+                                </span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -761,9 +903,19 @@ const EnhancedCourseDetailPage = () => {
                           <div>Задачи</div>
                         </div>
                       </div>
-                      <p className="text-green-600 text-xs">
+                      <p className="text-green-600 text-xs mb-3">
                         Можете да продължите с следващото ниво или да прегледате материалите отново.
                       </p>
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                        <p className="text-xs text-green-700 mb-2">
+                          <strong>Полезно да знаете:</strong>
+                        </p>
+                        <ul className="text-xs text-green-600 space-y-1">
+                          <li>• Видеата се маркират автоматично при 90% прогрес</li>
+                          <li>• Можете да премахнете завършването с бутона "Отмени"</li>
+                          <li>• Прогресът се запазва автоматично</li>
+                        </ul>
+                      </div>
                       {courseProgress?.completedAt && (
                         <div className="mt-3 pt-3 border-t border-green-300 text-xs text-green-600">
                           Завършен на: {formatDate(courseProgress.completedAt)}
@@ -771,6 +923,18 @@ const EnhancedCourseDetailPage = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Auto-completion Info */}
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <div className="flex items-start">
+                      <AlertCircle className="text-blue-600 mt-0.5 mr-2 flex-shrink-0" size={16} />
+                      <div className="text-xs text-blue-700">
+                        <p className="font-semibold mb-1">Автоматично завършване</p>
+                        <p className="mb-2">Видеата се маркират автоматично като завършени при достигане на 90% от съдържанието.</p>
+                        <p>Можете да премахнете завършването с бутона <Undo size={12} className="inline mx-1" /> "Отмени".</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

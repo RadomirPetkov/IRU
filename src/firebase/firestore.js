@@ -1,4 +1,4 @@
-// src/firebase/firestore.js - Production готова версия
+// src/firebase/firestore.js - Production готова версия с функция за премахване на завършването
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, 
@@ -282,6 +282,8 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
       return { success: false, error: 'Невалидни данни' };
     }
 
+    console.log(`📹 Маркиране на видео ${videoId} като завършено за ${userEmail}`);
+
     // Обновяване на видео прогреса
     const videoProgressRef = doc(db, 'users', userEmail, 'progress', `video_${videoId}`);
     await updateDoc(videoProgressRef, {
@@ -295,27 +297,86 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
 
     if (courseProgressSnap.exists()) {
       const courseData = courseProgressSnap.data();
-      const newCompletedVideos = [...(courseData.completedVideos || []), videoId];
-      const progressPercentage = (newCompletedVideos.length / courseData.totalVideos) * 100;
+      const currentCompletedVideos = courseData.completedVideos || [];
       
-      const updateData = {
-        completedVideos: arrayUnion(videoId),
-        progressPercentage,
-        lastAccessedAt: serverTimestamp()
-      };
+      // Проверяваме дали видеото вече не е добавено
+      if (!currentCompletedVideos.includes(videoId)) {
+        const newCompletedVideos = [...currentCompletedVideos, videoId];
+        const progressPercentage = (newCompletedVideos.length / courseData.totalVideos) * 100;
+        
+        const updateData = {
+          completedVideos: newCompletedVideos,
+          progressPercentage,
+          lastAccessedAt: serverTimestamp()
+        };
 
-      // Ако курсът е завършен
-      if (progressPercentage === 100) {
-        updateData.completedAt = serverTimestamp();
+        // Ако курсът е завършен
+        if (progressPercentage === 100) {
+          updateData.completedAt = serverTimestamp();
+          console.log(`🎉 Курс ${courseId} завършен на 100%!`);
+        }
+
+        await updateDoc(courseProgressRef, updateData);
+        console.log(`✅ Прогрес обновен: ${newCompletedVideos.length}/${courseData.totalVideos} (${Math.round(progressPercentage)}%)`);
+      } else {
+        console.log(`ℹ️ Видео ${videoId} вече е маркирано като завършено`);
       }
-
-      await updateDoc(courseProgressRef, updateData);
     }
 
     return { success: true };
   } catch (error) {
     console.error('Error marking video as completed:', error);
     return { success: false, error: 'Грешка при маркиране като завършено' };
+  }
+};
+
+// НОВА ФУНКЦИЯ: Премахване на завършването на видео
+export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
+  try {
+    if (!userEmail || !courseId || !videoId) {
+      return { success: false, error: 'Невалидни данни' };
+    }
+
+    console.log(`🔄 Премахване на завършването на видео ${videoId} за ${userEmail}`);
+
+    // Обновяване на видео прогреса
+    const videoProgressRef = doc(db, 'users', userEmail, 'progress', `video_${videoId}`);
+    await updateDoc(videoProgressRef, {
+      completedAt: null,
+      isCompleted: false,
+      uncompletedAt: serverTimestamp() // Записваме кога е премахнато завършването
+    });
+
+    // Обновяване на курсовия прогрес
+    const courseProgressRef = doc(db, 'users', userEmail, 'progress', `course_${courseId}`);
+    const courseProgressSnap = await getDoc(courseProgressRef);
+
+    if (courseProgressSnap.exists()) {
+      const courseData = courseProgressSnap.data();
+      const currentCompletedVideos = courseData.completedVideos || [];
+      
+      // Премахваме видеото от завършените
+      const newCompletedVideos = currentCompletedVideos.filter(id => id !== videoId);
+      const progressPercentage = courseData.totalVideos > 0 
+        ? (newCompletedVideos.length / courseData.totalVideos) * 100 
+        : 0;
+      
+      const updateData = {
+        completedVideos: newCompletedVideos,
+        progressPercentage,
+        lastAccessedAt: serverTimestamp(),
+        completedAt: null // Премахваме завършването на курса ако е имало такова
+      };
+
+      await updateDoc(courseProgressRef, updateData);
+      console.log(`✅ Прогрес обновен: ${newCompletedVideos.length}/${courseData.totalVideos} (${Math.round(progressPercentage)}%)`);
+      console.log(`📉 Видео ${videoId} премахнато от завършени`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error marking video as uncompleted:', error);
+    return { success: false, error: 'Грешка при премахване на завършването на видео' };
   }
 };
 
@@ -488,5 +549,8 @@ export const getActivityStats = async (userEmail, days = 30) => {
     return { success: false, error: 'Грешка при получаване на статистики' };
   }
 };
+
+// Експортиране на новата функция
+export { markVideoAsUncompleted };
 
 export default db;
