@@ -1,4 +1,4 @@
-// src/firebase/firestore.js - Production готова версия с функция за премахване на завършването
+// src/firebase/firestore.js - Production готова версия с функция за премахване на завършването и нормализация на имейли
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -38,19 +38,27 @@ if (!process.env.REACT_APP_FIREBASE_PROJECT_ID) {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+// 🆕 Helper функция за нормализация на имейли
+const normalizeEmail = (email) => {
+  if (!email || typeof email !== "string") return email;
+  return email.trim().toLowerCase();
+};
+
 // ============= ПОТРЕБИТЕЛСКИ ПРОФИЛИ =============
 
 // Създаване на нов потребителски профил
 export const createUserProfile = async (userEmail, userData = {}) => {
   try {
-    if (!userEmail || !userEmail.includes("@")) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       return { success: false, error: "Невалиден email" };
     }
 
-    const userRef = doc(db, "users", userEmail);
+    const userRef = doc(db, "users", normalizedEmail);
 
     const defaultData = {
-      email: userEmail,
+      email: normalizedEmail,
       displayName: userData.displayName || "Нов потребител",
       role: userData.role || "student",
       joinDate: serverTimestamp(),
@@ -68,7 +76,6 @@ export const createUserProfile = async (userEmail, userData = {}) => {
 
     return { success: true, message: "Профилът е създаден успешно" };
   } catch (error) {
-    // Не изложаваме системни грешки в production
     console.error("Error creating user profile:", error);
     return { success: false, error: "Грешка при създаване на профил" };
   }
@@ -77,12 +84,20 @@ export const createUserProfile = async (userEmail, userData = {}) => {
 // Получаване на потребителски профил
 export const getUserProfile = async (userEmail) => {
   try {
-    if (!userEmail || !userEmail.includes("@")) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       return { success: false, error: "Невалиден email" };
     }
 
-    const profileRef = doc(db, "users", userEmail, "profile", "info");
-    const permissionsRef = doc(db, "users", userEmail, "permissions", "access");
+    const profileRef = doc(db, "users", normalizedEmail, "profile", "info");
+    const permissionsRef = doc(
+      db,
+      "users",
+      normalizedEmail,
+      "permissions",
+      "access"
+    );
 
     const [profileSnap, permissionsSnap] = await Promise.all([
       getDoc(profileRef),
@@ -114,17 +129,18 @@ export const getUserProfile = async (userEmail) => {
 // Обновяване на последен вход
 export const updateLastLogin = async (userEmail) => {
   try {
-    if (!userEmail || !userEmail.includes("@")) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       return;
     }
 
-    const profileRef = doc(db, "users", userEmail, "profile", "info");
+    const profileRef = doc(db, "users", normalizedEmail, "profile", "info");
     await updateDoc(profileRef, {
       lastLogin: serverTimestamp(),
     });
   } catch (error) {
     console.error("Error updating last login:", error);
-    // Не спираме приложението заради тази грешка
   }
 };
 
@@ -133,11 +149,19 @@ export const updateLastLogin = async (userEmail) => {
 // Обновяване на курсови права
 export const updateUserCourseAccess = async (userEmail, courses) => {
   try {
-    if (!userEmail || !Array.isArray(courses)) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !Array.isArray(courses)) {
       return { success: false, error: "Невалидни данни" };
     }
 
-    const permissionsRef = doc(db, "users", userEmail, "permissions", "access");
+    const permissionsRef = doc(
+      db,
+      "users",
+      normalizedEmail,
+      "permissions",
+      "access"
+    );
     await updateDoc(permissionsRef, {
       courses: courses,
     });
@@ -151,11 +175,19 @@ export const updateUserCourseAccess = async (userEmail, courses) => {
 // Добавяне на достъп до курс
 export const grantCourseAccess = async (userEmail, courseId) => {
   try {
-    if (!userEmail || !courseId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId) {
       return { success: false, error: "Невалидни данни" };
     }
 
-    const permissionsRef = doc(db, "users", userEmail, "permissions", "access");
+    const permissionsRef = doc(
+      db,
+      "users",
+      normalizedEmail,
+      "permissions",
+      "access"
+    );
     await updateDoc(permissionsRef, {
       courses: arrayUnion(courseId),
     });
@@ -169,11 +201,19 @@ export const grantCourseAccess = async (userEmail, courseId) => {
 // Премахване на достъп до курс
 export const revokeCourseAccess = async (userEmail, courseId) => {
   try {
-    if (!userEmail || !courseId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId) {
       return { success: false, error: "Невалидни данни" };
     }
 
-    const permissionsRef = doc(db, "users", userEmail, "permissions", "access");
+    const permissionsRef = doc(
+      db,
+      "users",
+      normalizedEmail,
+      "permissions",
+      "access"
+    );
     await updateDoc(permissionsRef, {
       courses: arrayRemove(courseId),
     });
@@ -189,14 +229,16 @@ export const revokeCourseAccess = async (userEmail, courseId) => {
 // Записване на започване на курс
 export const enrollInCourse = async (userEmail, courseId, totalVideos) => {
   try {
-    if (!userEmail || !courseId || !totalVideos) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId || !totalVideos) {
       return { success: false, error: "Невалидни данни" };
     }
 
     const courseProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `course_${courseId}`
     );
@@ -221,14 +263,16 @@ export const enrollInCourse = async (userEmail, courseId, totalVideos) => {
 // Получаване на прогрес по курс
 export const getCourseProgress = async (userEmail, courseId) => {
   try {
-    if (!userEmail || !courseId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId) {
       return { success: false, error: "Невалидни данни" };
     }
 
     const courseProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `course_${courseId}`
     );
@@ -250,14 +294,16 @@ export const getCourseProgress = async (userEmail, courseId) => {
 // Записване на гледане на видео
 export const recordVideoWatch = async (userEmail, courseId, videoId) => {
   try {
-    if (!userEmail || !courseId || !videoId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId || !videoId) {
       return { success: false, error: "Невалидни данни" };
     }
 
     const videoProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `video_${videoId}`
     );
@@ -270,7 +316,7 @@ export const recordVideoWatch = async (userEmail, courseId, videoId) => {
         watchCount: increment(1),
       });
     } else {
-      // Създаване на нов запис
+      // Създаване на нов запис с ВСИЧКИ полета
       await setDoc(videoProgressRef, {
         courseId,
         videoId,
@@ -286,7 +332,7 @@ export const recordVideoWatch = async (userEmail, courseId, videoId) => {
     const courseProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `course_${courseId}`
     );
@@ -304,26 +350,28 @@ export const recordVideoWatch = async (userEmail, courseId, videoId) => {
 // Маркиране на видео като завършено
 export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
   try {
-    if (!userEmail || !courseId || !videoId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId || !videoId) {
       return { success: false, error: "Невалидни данни" };
     }
 
     console.log(
-      `📹 Маркиране на видео ${videoId} като завършено за ${userEmail}`
+      `📹 Маркиране на видео ${videoId} като завършено за ${normalizedEmail}`
     );
 
-    // 🆕 ПРОМЕНЕНО: Първо проверяваме дали документът съществува
+    // Първо проверяваме дали документът съществува
     const videoProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `video_${videoId}`
     );
     const videoProgressSnap = await getDoc(videoProgressRef);
 
     if (!videoProgressSnap.exists()) {
-      // 🆕 АКО НЕ СЪЩЕСТВУВА, СЪЗДАВАМЕ ГО
+      // АКО НЕ СЪЩЕСТВУВА, СЪЗДАВАМЕ ГО
       console.log(`📝 Създаване на нов video progress документ за ${videoId}`);
       await setDoc(videoProgressRef, {
         courseId,
@@ -335,7 +383,7 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
         totalWatchTime: 0,
       });
     } else {
-      // 🆕 АКО СЪЩЕСТВУВА, ОБНОВЯВАМЕ ГО
+      // АКО СЪЩЕСТВУВА, ОБНОВЯВАМЕ ГО
       console.log(`📝 Обновяване на съществуващ video progress за ${videoId}`);
       await updateDoc(videoProgressRef, {
         completedAt: serverTimestamp(),
@@ -347,7 +395,7 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
     const courseProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `course_${courseId}`
     );
@@ -385,15 +433,15 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
         console.log(`ℹ️ Видео ${videoId} вече е маркирано като завършено`);
       }
     } else {
-      // 🆕 АКО КУРСОВИЯТ ПРОГРЕС НЕ СЪЩЕСТВУВА, СЪЗДАВАМЕ ГО
+      // АКО КУРСОВИЯТ ПРОГРЕС НЕ СЪЩЕСТВУВА, СЪЗДАВАМЕ ГО
       console.log(`📝 Създаване на нов course progress за курс ${courseId}`);
       await setDoc(courseProgressRef, {
         courseId,
         enrolledAt: serverTimestamp(),
         completedAt: null,
         completedVideos: [videoId],
-        totalVideos: 1, // Ще се обнови по-късно
-        progressPercentage: 100, // Временно
+        totalVideos: 1,
+        progressPercentage: 100,
         lastAccessedAt: serverTimestamp(),
       });
     }
@@ -408,33 +456,35 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
 // Премахване на завършването на видео
 export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
   try {
-    if (!userEmail || !courseId || !videoId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId || !videoId) {
       return { success: false, error: "Невалидни данни" };
     }
 
     console.log(
-      `🔄 Премахване на завършването на видео ${videoId} за ${userEmail}`
+      `🔄 Премахване на завършването на видео ${videoId} за ${normalizedEmail}`
     );
 
     // Обновяване на видео прогреса
     const videoProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `video_${videoId}`
     );
     await updateDoc(videoProgressRef, {
       completedAt: null,
       isCompleted: false,
-      uncompletedAt: serverTimestamp(), // Записваме кога е премахнато завършването
+      uncompletedAt: serverTimestamp(),
     });
 
     // Обновяване на курсовия прогрес
     const courseProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `course_${courseId}`
     );
@@ -457,7 +507,7 @@ export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
         completedVideos: newCompletedVideos,
         progressPercentage,
         lastAccessedAt: serverTimestamp(),
-        completedAt: null, // Премахваме завършването на курса ако е имало такова
+        completedAt: null,
       };
 
       await updateDoc(courseProgressRef, updateData);
@@ -482,14 +532,16 @@ export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
 // Получаване на всички завършени видеа за курс
 export const getCompletedVideos = async (userEmail, courseId) => {
   try {
-    if (!userEmail || !courseId) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail || !courseId) {
       return { success: false, error: "Невалидни данни" };
     }
 
     const courseProgressRef = doc(
       db,
       "users",
-      userEmail,
+      normalizedEmail,
       "progress",
       `course_${courseId}`
     );
@@ -515,12 +567,14 @@ export const getCompletedVideos = async (userEmail, courseId) => {
 // Започване на нова сесия
 export const startUserSession = async (userEmail) => {
   try {
-    if (!userEmail) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail) {
       return { success: false, error: "Невалиден email" };
     }
 
     const sessionId = Date.now().toString();
-    const sessionRef = doc(db, "users", userEmail, "activity", sessionId);
+    const sessionRef = doc(db, "users", normalizedEmail, "activity", sessionId);
 
     await setDoc(sessionRef, {
       loginAt: serverTimestamp(),
@@ -530,7 +584,6 @@ export const startUserSession = async (userEmail) => {
       coursesAccessed: [],
     });
 
-    // Запазваме session ID в localStorage за по-късно използване
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("currentSessionId", sessionId);
     }
@@ -545,7 +598,9 @@ export const startUserSession = async (userEmail) => {
 // Завършване на сесия
 export const endUserSession = async (userEmail) => {
   try {
-    if (!userEmail) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail) {
       return { success: false, error: "Невалиден email" };
     }
 
@@ -555,13 +610,13 @@ export const endUserSession = async (userEmail) => {
         : null;
     if (!sessionId) return { success: false, error: "Няма активна сесия" };
 
-    const sessionRef = doc(db, "users", userEmail, "activity", sessionId);
+    const sessionRef = doc(db, "users", normalizedEmail, "activity", sessionId);
     const sessionSnap = await getDoc(sessionRef);
 
     if (sessionSnap.exists()) {
       const sessionData = sessionSnap.data();
       const loginTime = sessionData.loginAt.toDate();
-      const duration = Math.round((Date.now() - loginTime.getTime()) / 60000); // в минути
+      const duration = Math.round((Date.now() - loginTime.getTime()) / 60000);
 
       await updateDoc(sessionRef, {
         logoutAt: serverTimestamp(),
@@ -610,12 +665,14 @@ export const getAllUsers = async () => {
 // Получаване на статистики за активност
 export const getActivityStats = async (userEmail, days = 30) => {
   try {
-    if (!userEmail) {
+    const normalizedEmail = normalizeEmail(userEmail);
+
+    if (!normalizedEmail) {
       return { success: false, error: "Невалиден email" };
     }
 
     // Получаване на сесии
-    const sessionsRef = collection(db, "users", userEmail, "activity");
+    const sessionsRef = collection(db, "users", normalizedEmail, "activity");
     const sessionsQuery = query(
       sessionsRef,
       orderBy("loginAt", "desc"),
@@ -629,7 +686,7 @@ export const getActivityStats = async (userEmail, days = 30) => {
     }));
 
     // Получаване на прогрес по курсове
-    const progressRef = collection(db, "users", userEmail, "progress");
+    const progressRef = collection(db, "users", normalizedEmail, "progress");
     const progressSnap = await getDocs(progressRef);
 
     const courseProgress = [];

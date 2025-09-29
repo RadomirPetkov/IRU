@@ -34,7 +34,7 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  
+
   // Добавяме state за курсовете
   const [availableCourses, setAvailableCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -48,10 +48,10 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
     setCoursesLoading(true);
     try {
       const coursesData = await courses(); // Извикваме функцията
-      console.log('📚 Заредени курсове за AdminUserCreation:', coursesData);
+      console.log("📚 Заредени курсове за AdminUserCreation:", coursesData);
       setAvailableCourses(Array.isArray(coursesData) ? coursesData : []);
     } catch (error) {
-      console.error('❌ Грешка при зареждане на курсове:', error);
+      console.error("❌ Грешка при зареждане на курсове:", error);
       setAvailableCourses([]);
     } finally {
       setCoursesLoading(false);
@@ -123,26 +123,29 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
     setSuccess("");
 
     try {
-      console.log('🔄 Създаване на потребител с данни:', {
-        email: formData.email,
-        password: '***',
-        displayName: formData.displayName || formData.email.split("@")[0],
+      // Нормализираме имейла
+      const normalizedEmail = formData.email.trim().toLowerCase();
+
+      console.log("🔄 Създаване на потребител с данни:", {
+        email: normalizedEmail,
+        password: "***",
+        displayName: formData.displayName || normalizedEmail.split("@")[0],
         role: formData.role,
         courses: formData.courses,
       });
 
       const result = await adminCreateUser(adminEmail, {
-        email: formData.email,
+        email: normalizedEmail, // 🆕 ПРОМЕНЕНО
         password: formData.password,
-        displayName: formData.displayName || formData.email.split("@")[0],
+        displayName: formData.displayName || normalizedEmail.split("@")[0],
         role: formData.role,
         courses: formData.courses,
       });
 
       if (result.success) {
-        setSuccess(`✅ Потребител ${formData.email} е създаден успешно!`);
-        
-        console.log('🎉 Потребител създаден успешно:', result);
+        setSuccess(`✅ Потребител ${normalizedEmail} е създаден успешно!`);
+
+        console.log("🎉 Потребител създаден успешно:", result);
 
         // Изчистваме формата
         setFormData({
@@ -165,11 +168,11 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
         }, 3000);
       } else {
         setError(result.error || "Грешка при създаване на потребител");
-        console.error('❌ Грешка при създаване:', result);
+        console.error("❌ Грешка при създаване:", result);
       }
     } catch (error) {
       setError("Неочаквана грешка: " + error.message);
-      console.error('❌ Неочаквана грешка:', error);
+      console.error("❌ Неочаквана грешка:", error);
     } finally {
       setLoading(false);
     }
@@ -182,7 +185,6 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-auto">
-        
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center">
@@ -203,7 +205,6 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          
           {/* Success/Error Messages */}
           {success && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center">
@@ -221,7 +222,6 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
 
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -262,7 +262,7 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
               <Shield className="mr-2" size={20} />
               Парола
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Password */}
               <div>
@@ -343,7 +343,7 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
                       formData.role === role
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-300 hover:border-gray-400"
-                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <input
                       type="radio"
@@ -383,7 +383,7 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
               <BookOpen className="mr-2" size={18} />
               Достъп до курсове
             </label>
-            
+
             {coursesLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
@@ -403,7 +403,7 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
                       formData.courses.includes(course.id)
                         ? "border-green-500 bg-green-50"
                         : "border-gray-300 hover:border-gray-400"
-                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <input
                       type="checkbox"
@@ -429,7 +429,8 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
                           {course.title}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Ниво {course.level} • {course.videos?.length || 0} видеа
+                          Ниво {course.level} • {course.videos?.length || 0}{" "}
+                          видеа
                         </div>
                       </div>
                       <div className="text-2xl">{course.icon}</div>
@@ -471,19 +472,23 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
           </div>
 
           {/* Debug Info (само в development) */}
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === "development" && (
             <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
               <strong>Debug Info:</strong>
               <pre className="mt-1 text-gray-600">
-                {JSON.stringify({
-                  email: formData.email,
-                  hasPassword: !!formData.password,
-                  passwordLength: formData.password.length,
-                  role: formData.role,
-                  coursesCount: formData.courses.length,
-                  availableCoursesCount: availableCourses.length,
-                  coursesLoading
-                }, null, 2)}
+                {JSON.stringify(
+                  {
+                    email: formData.email,
+                    hasPassword: !!formData.password,
+                    passwordLength: formData.password.length,
+                    role: formData.role,
+                    coursesCount: formData.courses.length,
+                    availableCoursesCount: availableCourses.length,
+                    coursesLoading,
+                  },
+                  null,
+                  2
+                )}
               </pre>
             </div>
           )}

@@ -1,40 +1,43 @@
 // src/components/Login.jsx - Почистена версия без демо информация
-import React, { useState } from 'react';
-import { loginUser } from '../firebaseAuth';
-import { Eye, EyeOff, Lock, Mail, LogIn, X } from 'lucide-react';
+import React, { useState } from "react";
+import { loginUser } from "../firebaseAuth";
+import { Eye, EyeOff, Lock, Mail, LogIn, X } from "lucide-react";
 
 const Login = ({ onClose, onLoginSuccess }) => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    setError('');
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
-    const result = await loginUser(formData.email, formData.password);
-    
+    // Нормализираме имейла преди изпращане
+    const normalizedEmail = formData.email.trim().toLowerCase();
+
+    const result = await loginUser(normalizedEmail, formData.password); // 🆕 ПРОМЕНЕНО
+
     if (result.success) {
       onLoginSuccess && onLoginSuccess(result.user);
       onClose && onClose();
     } else {
-      setError('Невалиден имейл или парола');
+      setError("Невалиден имейл или парола");
     }
-    
+
     setLoading(false);
   };
 
@@ -47,7 +50,9 @@ const Login = ({ onClose, onLoginSuccess }) => {
             <div className="bg-gradient-to-r from-purple-600 to-blue-700 rounded-full p-2 mr-3">
               <LogIn className="text-white" size={24} />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800">Вход в системата</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Вход в системата
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -91,7 +96,7 @@ const Login = ({ onClose, onLoginSuccess }) => {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
@@ -132,7 +137,7 @@ const Login = ({ onClose, onLoginSuccess }) => {
                   Влизане...
                 </div>
               ) : (
-                'Влез'
+                "Влез"
               )}
             </button>
           </form>
