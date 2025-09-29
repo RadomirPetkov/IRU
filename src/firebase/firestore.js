@@ -66,9 +66,16 @@ export const createUserProfile = async (userEmail, userData = {}) => {
       isActive: true,
     };
 
+    // 🆕 ВАЖНО: Създайте parent document първо
+    await setDoc(userRef, {
+      email: normalizedEmail,
+      createdAt: serverTimestamp(),
+      isActive: true,
+    });
+
+    // След това създайте подколекциите
     await setDoc(doc(userRef, "profile", "info"), defaultData);
 
-    // Създаване на начални права
     await setDoc(doc(userRef, "permissions", "access"), {
       courses: userData.courses || ["basic"],
       customPermissions: userData.customPermissions || [],
@@ -646,15 +653,24 @@ export const getAllUsers = async () => {
     const users = [];
     for (const userDoc of snapshot.docs) {
       const userEmail = userDoc.id;
+
+      // Вземи данните от parent document
+      const parentData = userDoc.data();
+
+      // Вземи профила
       const profile = await getUserProfile(userEmail);
+
       if (profile.success) {
         users.push({
+          id: userEmail,
           email: userEmail,
+          ...parentData,
           ...profile.data,
         });
       }
     }
 
+    console.log(`✅ Заредени ${users.length} потребители`);
     return { success: true, data: users };
   } catch (error) {
     console.error("Error getting all users:", error);

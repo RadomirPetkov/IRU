@@ -16,9 +16,13 @@ import {
   getActivityStats,
   getAllUsers,
 } from "../firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../firebaseConfig";
+import { createUser } from "../firebaseAuth";
+
+const functions = getFunctions(app, "europe-west3");
 
 // Добавяме Firebase Auth функции
-import { createUser } from "../firebaseAuth";
 
 // 🆕 Helper функция за нормализация на имейли
 const normalizeEmail = (email) => {
@@ -184,20 +188,7 @@ export const adminCreateUser = async (adminEmail, newUserData) => {
       return { success: false, error: "Невалидни данни" };
     }
 
-    // Проверяваме дали admin има права
-    const adminProfile = await getUserProfile(normalizedAdminEmail);
-    if (
-      !adminProfile.success ||
-      !hasPermission(adminProfile.data, "manage_users")
-    ) {
-      return {
-        success: false,
-        error: "Няма права за създаване на потребители",
-      };
-    }
-
     const { email, password, displayName, role, courses } = newUserData;
-
     const normalizedUserEmail = normalizeEmail(email);
 
     // Валидации
@@ -208,7 +199,7 @@ export const adminCreateUser = async (adminEmail, newUserData) => {
     if (!normalizedUserEmail.includes("@") || password.length < 6) {
       return {
         success: false,
-        error: "Невалиден email или парола прекалено къса",
+        error: "Невалиден email або парола прекалено къса",
       };
     }
 
@@ -216,31 +207,33 @@ export const adminCreateUser = async (adminEmail, newUserData) => {
       return { success: false, error: "Невалидна роля" };
     }
 
-    // Създаваме потребителя в Authentication
-    const authResult = await createUser(normalizedUserEmail, password);
-    if (!authResult.success) {
-      return authResult;
-    }
-
-    // Създаваме профила във Firestore
-    const profileResult = await createUserProfile(normalizedUserEmail, {
+    // 🆕 Извикваме Cloud Function
+    const createUserFunction = httpsCallable(functions, "createUser");
+    const result = await createUserFunction({
+      email: normalizedUserEmail,
+      password: password,
       displayName: displayName || getDisplayNameFromEmail(normalizedUserEmail),
       role: role || ROLES.STUDENT,
       courses:
         courses || ROLE_DEFINITIONS[role || ROLES.STUDENT].defaultCourses,
     });
 
-    if (!profileResult.success) {
-      return profileResult;
+    if (result.data.success) {
+      return {
+        success: true,
+        message: "Потребителят е създаден успешно",
+      };
+    } else {
+      return { success: false, error: result.data.error || "Грешка" };
     }
-
-    return { success: true, message: "Потребителят е създаден успешно" };
   } catch (error) {
     console.error("Error creating user by admin:", error);
-    return { success: false, error: "Грешка при създаване на потребител" };
+    return {
+      success: false,
+      error: error.message || "Грешка при създаване на потребител",
+    };
   }
 };
-
 /**
  * Добавяне на достъп до курс (само за админи)
  */
