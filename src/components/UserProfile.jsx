@@ -29,11 +29,12 @@ const UserProfile = ({ user, onLogout }) => {
   };
 
   const getUserDisplayName = () => {
+    // Първо проверяваме дали има displayName в user обекта
+    if (user?.displayName) {
+      return user.displayName;
+    }
+    // Ако няма displayName, използваме email
     if (user?.email) {
-      // Извличаме ролята от имейла за демо целите
-      if (user.email.includes("admin")) return "Админ";
-      if (user.email.includes("teacher")) return "Учител";
-      if (user.email.includes("student")) return "Студент";
       return user.email.split("@")[0];
     }
     return "Потребител";
