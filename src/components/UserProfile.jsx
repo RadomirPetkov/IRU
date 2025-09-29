@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { logoutUser } from "../firebaseAuth";
 import { User, LogOut, ChevronDown, Settings } from "lucide-react";
 
-const UserProfile = ({ user, onLogout }) => {
+const UserProfile = ({ user, userProfile, onLogout }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const buttonRef = useRef(null);
   const [dropdownStyle, setDropdownStyle] = useState({});
@@ -40,41 +40,17 @@ const UserProfile = ({ user, onLogout }) => {
     return "Потребител";
   };
 
-  const getUserRole = () => {
-    if (user?.email) {
-      if (user.email.includes("admin")) return "admin";
-      if (user.email.includes("teacher")) return "teacher";
-      if (user.email.includes("student")) return "student";
+  const getRoleInfo = () => {
+    if (userProfile?.roleInfo) {
+      return {
+        label: userProfile.roleInfo.name,
+        color: userProfile.roleInfo.color,
+      };
     }
-    return "user";
-  };
-
-  const getRoleColor = () => {
-    const role = getUserRole();
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800";
-      case "teacher":
-        return "bg-green-100 text-green-800";
-      case "student":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getRoleLabel = () => {
-    const role = getUserRole();
-    switch (role) {
-      case "admin":
-        return "Админ";
-      case "teacher":
-        return "Учител";
-      case "student":
-        return "Студент";
-      default:
-        return "Потребител";
-    }
+    return {
+      label: "Потребител",
+      color: "bg-gray-100 text-gray-800",
+    };
   };
 
   return (
@@ -126,9 +102,9 @@ const UserProfile = ({ user, onLogout }) => {
                     {user?.email}
                   </p>
                   <span
-                    className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor()}`}
+                    className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor().color}`}
                   >
-                    {getRoleLabel()}
+                    {getRoleInfo().label}
                   </span>
                 </div>
               </div>

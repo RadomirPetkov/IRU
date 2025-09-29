@@ -7,7 +7,7 @@ import Login from "./Login";
 import { LogIn } from "lucide-react";
 
 export const Navigation = (props) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, userProfile } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -331,7 +331,11 @@ export const Navigation = (props) => {
               <li className="navbar-auth-item">
                 {isAuthenticated ? (
                   <div className="navbar-user-profile">
-                    <UserProfile user={user} onLogout={handleLogout} />
+                    <UserProfile
+                      user={user}
+                      userProfile={userProfile}
+                      onLogout={handleLogout}
+                    />
                   </div>
                 ) : (
                   <button
