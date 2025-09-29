@@ -273,7 +273,7 @@ export const Services = (props) => {
                                           {item}
                                           {idx === 0 && (
                                             <a
-                                              href="https://serviceseprocess.az.government.bg/service/5aedf067-45f5-4a56-9fe7-ca42f9084cc8/description"
+                                              href="https://serviceseprocess.az.government.bg/service/service/5aedf067-45f5-4a56-9fe7-ca42f9084cc8"
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               className="inline-block ml-1 text-indigo-600 font-medium hover:text-indigo-800 hover:underline"
