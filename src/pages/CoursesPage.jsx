@@ -1,4 +1,4 @@
-// src/pages/CoursesPage.jsx - Поправена версия с админ панел
+// src/pages/CoursesPage.jsx - Версия с обработка на липсващи курсове
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -10,13 +10,13 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Users,
   BookOpen,
-  Award,
   Shield,
   RefreshCw,
   AlertCircle,
-  Settings
+  Settings,
+  Database,
+  WifiOff
 } from 'lucide-react';
 import { courses, reloadCourses, checkForUpdates } from '../data/coursesData';
 
@@ -27,6 +27,7 @@ const CoursesPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null); // 'network', 'permission', 'empty', 'unknown'
   const [lastCheck, setLastCheck] = useState(null);
 
   useEffect(() => {
@@ -41,33 +42,45 @@ const CoursesPage = () => {
   const loadCourses = async () => {
     setLoading(true);
     setError(null);
+    setErrorType(null);
     
     try {
       console.log('📚 Зареждане на курсове...');
       const coursesResult = await courses();
       
       if (Array.isArray(coursesResult)) {
+        if (coursesResult.length === 0) {
+          console.log('⚠️ Няма налични курсове');
+          setErrorType('empty');
+          setError('В момента няма активни курсове в системата');
+        } else {
+          console.log(`✅ Заредени ${coursesResult.length} курса`);
+        }
         setCoursesData(coursesResult);
-        console.log(`✅ Заредени ${coursesResult.length} курса`);
       } else {
-        console.warn('⚠️ Получен невалиден формат на курсове:', coursesResult);
+        console.warn('⚠️ Получен невалиден формат на курсове');
         setCoursesData([]);
+        setErrorType('unknown');
+        setError('Получени са данни в невалиден формат');
       }
       
       setLastCheck(new Date());
     } catch (error) {
       console.error('❌ Грешка при зареждане на курсове:', error);
-      setError('Грешка при зареждане на курсове. Използваме кеширани данни.');
       
-      // Фолбек към кеширани данни ако има
-      try {
-        const fallbackCourses = await courses();
-        if (Array.isArray(fallbackCourses)) {
-          setCoursesData(fallbackCourses);
-        }
-      } catch (fallbackError) {
-        console.error('❌ Грешка и при фолбек данните:', fallbackError);
+      // Определяме типа на грешката
+      if (error.code === 'permission-denied') {
+        setErrorType('permission');
+        setError('Нямате права за достъп до курсовете');
+      } else if (error.code === 'unavailable' || error.message.includes('network')) {
+        setErrorType('network');
+        setError('Проблем с мрежовата връзка. Моля, проверете интернет връзката си');
+      } else {
+        setErrorType('unknown');
+        setError('Грешка при зареждане на курсове');
       }
+      
+      setCoursesData([]);
     } finally {
       setLoading(false);
     }
@@ -76,19 +89,35 @@ const CoursesPage = () => {
   const handleRefreshCourses = async () => {
     setRefreshing(true);
     setError(null);
+    setErrorType(null);
     
     try {
       console.log('🔄 Ръчно презареждане на курсове...');
       const refreshedCourses = await reloadCourses();
       
       if (Array.isArray(refreshedCourses)) {
+        if (refreshedCourses.length === 0) {
+          setErrorType('empty');
+          setError('В момента няма активни курсове в системата');
+        } else {
+          console.log(`✅ Презаредени ${refreshedCourses.length} курса`);
+        }
         setCoursesData(refreshedCourses);
-        console.log(`✅ Презаредени ${refreshedCourses.length} курса`);
         setLastCheck(new Date());
       }
     } catch (error) {
       console.error('❌ Грешка при презареждане:', error);
-      setError('Грешка при презареждане на курсове');
+      
+      if (error.code === 'permission-denied') {
+        setErrorType('permission');
+        setError('Нямате права за достъп до курсовете');
+      } else if (error.code === 'unavailable' || error.message.includes('network')) {
+        setErrorType('network');
+        setError('Проблем с мрежовата връзка');
+      } else {
+        setErrorType('unknown');
+        setError('Грешка при презареждане на курсове');
+      }
     } finally {
       setRefreshing(false);
     }
@@ -113,10 +142,10 @@ const CoursesPage = () => {
   // Проверяваме дали потребителят е админ
   const isAdmin = isAuthenticated && hasPermission && hasPermission('view_analytics');
 
+  // Render за неавтентифициран потребител
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20">
-        {/* Breadcrumb Navigation */}
         <div className="bg-white shadow-sm border-b">
           <div className="container mx-auto px-4 max-w-[1500px] mt-24 py-4">
             <Link 
@@ -129,7 +158,6 @@ const CoursesPage = () => {
           </div>
         </div>
 
-        {/* Protected Content */}
         <div className="py-16">
           <div className="container mx-auto px-4 max-w-[1500px]">
             <div className="text-center mb-12">
@@ -155,43 +183,17 @@ const CoursesPage = () => {
                   </p>
                 </div>
 
-                <div className="p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    {loading ? (
-                      <div className="col-span-full text-center py-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Зареждане на курсове...</p>
-                      </div>
-                    ) : (
-                      coursesData.slice(0, 4).map(course => (
-                        <div key={course.id} className="text-center p-4">
-                          <div className={`bg-gradient-to-r ${course.color} rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 text-2xl`}>
-                            {course.icon}
-                          </div>
-                          <h3 className="font-semibold text-gray-800 text-sm mb-1">
-                            Ниво {course.level}
-                          </h3>
-                          <p className="text-xs text-gray-600">
-                            {course.videos?.length || 0} видеа
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="text-center">
-                    <button
-                      onClick={() => setShowLogin(true)}
-                      className="bg-gradient-to-r from-purple-600 to-blue-700 text-white px-8 py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-lg text-lg"
-                    >
-                      Влизане в системата
-                    </button>
-                  </div>
+                <div className="p-8 text-center">
+                  <button
+                    onClick={() => setShowLogin(true)}
+                    className="bg-gradient-to-r from-purple-600 to-blue-700 text-white px-8 py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-lg text-lg"
+                  >
+                    Влизане в системата
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Login Modal */}
             {showLogin && (
               <Login 
                 onClose={() => setShowLogin(false)}
@@ -204,26 +206,190 @@ const CoursesPage = () => {
     );
   }
 
+  // Render за зареждане
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-6"></div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Зареждане на курсове</h3>
-          <p className="text-gray-600">Моля изчакайте, докато заредим най-новите курсове...</p>
+          <p className="text-gray-600">Моля изчакайте, докато заредим наличните курсове...</p>
         </div>
       </div>
     );
   }
 
-  // Филтриране на курсовете въз основа на достъпа от Firestore
-  const accessibleCourses = coursesData.filter(course => 
-    hasAccessToCourse(course.id)
-  );
-  const lockedCourses = coursesData.filter(course => 
-    !hasAccessToCourse(course.id)
-  );
+  // Филтриране на курсовете
+  const accessibleCourses = coursesData.filter(course => hasAccessToCourse(course.id));
+  const lockedCourses = coursesData.filter(course => !hasAccessToCourse(course.id));
 
+  // Render за грешка или липса на курсове
+  if (errorType || coursesData.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="bg-white shadow-sm border-b">
+          <div className="container mx-auto px-4 max-w-[1500px] py-4 mt-20">
+            <div className="flex items-center justify-between">
+              <Link 
+                to="/" 
+                className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <ArrowLeft size={20} className="mr-2" />
+                Обратно към началото
+              </Link>
+              
+              <div className="flex items-center space-x-4">
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 text-sm font-medium shadow-md"
+                  >
+                    <Settings size={14} className="mr-1" />
+                    Админ панел
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="py-16">
+          <div className="container mx-auto px-4 max-w-[1500px]">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                {/* Икона според типа грешка */}
+                {errorType === 'empty' && (
+                  <Database className="text-gray-400 mx-auto mb-6" size={80} />
+                )}
+                {errorType === 'network' && (
+                  <WifiOff className="text-orange-400 mx-auto mb-6" size={80} />
+                )}
+                {errorType === 'permission' && (
+                  <Shield className="text-red-400 mx-auto mb-6" size={80} />
+                )}
+                {(errorType === 'unknown' || !errorType) && (
+                  <AlertCircle className="text-yellow-400 mx-auto mb-6" size={80} />
+                )}
+
+                {/* Заглавие според типа грешка */}
+                <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                  {errorType === 'empty' && 'Няма активни курсове'}
+                  {errorType === 'network' && 'Проблем с връзката'}
+                  {errorType === 'permission' && 'Няма достъп'}
+                  {(errorType === 'unknown' || !errorType) && 'Възникна проблем'}
+                </h2>
+
+                {/* Съобщение */}
+                <p className="text-gray-600 text-lg mb-8">
+                  {error || 'В момента няма активни курсове в системата'}
+                </p>
+
+                {/* Допълнителна информация */}
+                <div className="bg-blue-50 rounded-lg p-4 mb-8 text-left">
+                  <h3 className="font-semibold text-blue-800 mb-2">Възможни причини:</h3>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    {errorType === 'empty' && (
+                      <>
+                        <li>• Все още не са добавени курсове в системата</li>
+                        <li>• Курсовете са временно деактивирани</li>
+                        <li>• Планирано добавяне на ново съдържание</li>
+                      </>
+                    )}
+                    {errorType === 'network' && (
+                      <>
+                        <li>• Няма интернет връзка</li>
+                        <li>• Firestore е временно недостъпен</li>
+                        <li>• Проблем със сървъра</li>
+                      </>
+                    )}
+                    {errorType === 'permission' && (
+                      <>
+                        <li>• Нямате права за преглед на курсове</li>
+                        <li>• Firestore правилата блокират достъпа</li>
+                        <li>• Свържете се с администратор</li>
+                      </>
+                    )}
+                    {(errorType === 'unknown' || !errorType) && (
+                      <>
+                        <li>• Временен проблем със системата</li>
+                        <li>• Грешка при зареждане на данни</li>
+                        <li>• Опитайте да презаредите страницата</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Информация за потребителя */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-8">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="text-left">
+                      <span className="text-gray-600">Потребител:</span>
+                      <p className="font-medium text-gray-800">{userProfile?.displayName || 'Неизвестен'}</p>
+                    </div>
+                    <div className="text-left">
+                      <span className="text-gray-600">Роля:</span>
+                      <p className="font-medium text-gray-800">{userProfile?.roleInfo?.name || 'Неизвестна'}</p>
+                    </div>
+                    <div className="text-left">
+                      <span className="text-gray-600">Email:</span>
+                      <p className="font-medium text-gray-800 text-xs">{user?.email || 'N/A'}</p>
+                    </div>
+                    <div className="text-left">
+                      <span className="text-gray-600">Последна проверка:</span>
+                      <p className="font-medium text-gray-800 text-xs">
+                        {lastCheck ? lastCheck.toLocaleTimeString('bg-BG') : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Бутони за действие */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={handleRefreshCourses}
+                    disabled={refreshing}
+                    className="flex items-center justify-center bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-md"
+                  >
+                    <RefreshCw size={20} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Презарежда...' : 'Опитай отново'}
+                  </button>
+
+                  <Link
+                    to="/"
+                    className="flex items-center justify-center bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all duration-200 font-medium shadow-md"
+                  >
+                    <ArrowLeft size={20} className="mr-2" />
+                    Към началната страница
+                  </Link>
+
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center justify-center bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-all duration-200 font-medium shadow-md"
+                    >
+                      <Settings size={20} className="mr-2" />
+                      Админ панел
+                    </Link>
+                  )}
+                </div>
+
+                {/* Помощна информация */}
+                {errorType !== 'permission' && (
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <p className="text-sm text-gray-500">
+                      Ако проблемът продължава, моля свържете се с администратор
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Нормален render с курсове
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
       {/* Breadcrumb Navigation */}
@@ -262,7 +428,6 @@ const CoursesPage = () => {
                 {refreshing ? 'Презарежда...' : 'Обнови'}
               </button>
               
-              {/* АДМИН ПАНЕЛ БУТОН */}
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -313,26 +478,6 @@ const CoursesPage = () => {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="py-4">
-          <div className="container mx-auto px-4 max-w-[1500px]">
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg flex items-center justify-between">
-              <div className="flex items-center">
-                <AlertCircle className="mr-2" size={20} />
-                {error}
-              </div>
-              <button 
-                onClick={() => setError(null)}
-                className="text-yellow-500 hover:text-yellow-700"
-              >
-                <XCircle size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Courses Grid */}
       <div className="py-16">
         <div className="container mx-auto px-4 max-w-[1500px]">
@@ -351,7 +496,6 @@ const CoursesPage = () => {
                     key={course.id}
                     className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   >
-                    {/* Course Header */}
                     <div className={`bg-gradient-to-r ${course.color} p-6 text-white`}>
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-4xl">{course.icon}</div>
@@ -363,7 +507,6 @@ const CoursesPage = () => {
                       <p className="text-white text-opacity-90">{course.description}</p>
                     </div>
 
-                    {/* Course Content */}
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center text-gray-600">
@@ -376,7 +519,6 @@ const CoursesPage = () => {
                         </div>
                       </div>
 
-                      {/* Course Videos Preview */}
                       <div className="space-y-2 mb-6">
                         {(course.videos || []).slice(0, 3).map((video, index) => (
                           <div key={video.id || index} className="flex items-center text-sm text-gray-600">
@@ -421,7 +563,6 @@ const CoursesPage = () => {
                     key={course.id}
                     className="bg-white rounded-xl shadow-lg overflow-hidden opacity-75"
                   >
-                    {/* Course Header */}
                     <div className="bg-gray-400 p-6 text-white relative">
                       <div className="absolute top-4 right-4">
                         <Lock className="text-white" size={24} />
@@ -436,7 +577,6 @@ const CoursesPage = () => {
                       <p className="text-white text-opacity-90">{course.description}</p>
                     </div>
 
-                    {/* Course Content */}
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center text-gray-400">
@@ -462,27 +602,6 @@ const CoursesPage = () => {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* No Courses Message */}
-          {coursesData.length === 0 && (
-            <div className="text-center py-12">
-              <BookOpen className="text-gray-400 mx-auto mb-4" size={64} />
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                Няма налични курсове
-              </h3>
-              <p className="text-gray-600 mb-4">
-                В момента няма курсове в системата
-              </p>
-              <button
-                onClick={handleRefreshCourses}
-                disabled={refreshing}
-                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center mx-auto"
-              >
-                <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Презарежда...' : 'Презареди курсовете'}
-              </button>
             </div>
           )}
 
@@ -517,7 +636,6 @@ const CoursesPage = () => {
                   {refreshing ? 'Презарежда...' : 'Презареди данните'}
                 </button>
                 
-                {/* АДМИН ПАНЕЛ БУТОН */}
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -536,4 +654,4 @@ const CoursesPage = () => {
   );
 };
 
-export default CoursesPage;
+export default CoursesPage

@@ -102,7 +102,7 @@ const UserProfile = ({ user, userProfile, onLogout }) => {
                     {user?.email}
                   </p>
                   <span
-                    className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor().color}`}
+                    className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleInfo().color}`}
                   >
                     {getRoleInfo().label}
                   </span>

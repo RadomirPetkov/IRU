@@ -1,4 +1,4 @@
-// src/components/EnhancedCourseDetailPage.jsx - Обновена с автоматично маркиране и премахване
+// src/components/EnhancedCourseDetailPage.jsx - Пълна версия с обработка на грешки
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,7 +24,9 @@ import {
   Video,
   ArrowRight,
   X,
-  Undo
+  Undo,
+  Database,
+  WifiOff
 } from 'lucide-react';
 import { getCourseById, reloadCourses } from '../data/coursesData';
 import { CONTENT_TYPES } from '../firebase/courses';
@@ -33,7 +35,7 @@ import {
   getCourseProgress,
   startVideo,
   completeVideo,
-  uncompleteVideo, // НОВА ФУНКЦИЯ
+  uncompleteVideo,
   getUserCompletedVideos
 } from '../services/userService';
 
@@ -48,6 +50,7 @@ const EnhancedCourseDetailPage = () => {
   const [enrolling, setEnrolling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null);
   const [videoProgress, setVideoProgress] = useState({});
 
   // Зареждане на данни при монтиране на компонента
@@ -64,6 +67,7 @@ const EnhancedCourseDetailPage = () => {
   const loadCourseData = async () => {
     setLoading(true);
     setError(null);
+    setErrorType(null);
     
     try {
       console.log(`📚 Зареждане на курс ${courseId}...`);
@@ -80,12 +84,24 @@ const EnhancedCourseDetailPage = () => {
           console.log(`📹 Стари видеа в курса: ${courseData.videos.length} (нужна миграция)`);
         }
       } else {
-        setError('Курсът не съществува');
+        setErrorType('notfound');
+        setError('Курсът не съществува или е бил премахнат');
         console.error(`❌ Курс с ID ${courseId} не е намерен`);
       }
     } catch (error) {
       console.error('❌ Грешка при зареждане на курс:', error);
-      setError('Грешка при зареждане на курс');
+      
+      // Определяме типа грешка
+      if (error.code === 'permission-denied') {
+        setErrorType('permission');
+        setError('Нямате права за преглед на този курс');
+      } else if (error.code === 'unavailable' || error.message?.includes('network')) {
+        setErrorType('network');
+        setError('Проблем с мрежовата връзка');
+      } else {
+        setErrorType('unknown');
+        setError('Грешка при зареждане на курс');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,6 +180,7 @@ const EnhancedCourseDetailPage = () => {
   const handleRefreshCourse = async () => {
     setRefreshing(true);
     setError(null);
+    setErrorType(null);
     
     try {
       console.log('🔄 Презареждане на курса...');
@@ -178,6 +195,7 @@ const EnhancedCourseDetailPage = () => {
     } catch (error) {
       console.error('❌ Грешка при презареждане на курса:', error);
       setError('Грешка при презареждане на курса');
+      setErrorType('unknown');
     } finally {
       setRefreshing(false);
     }
@@ -211,7 +229,6 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  // НОВА ФУНКЦИЯ: Обработка на прогреса на видеото
   const handleVideoProgress = (currentTime, totalTime, progressPercent) => {
     const content = getCourseContent(course);
     const selectedContent = content[selectedContentIndex];
@@ -228,7 +245,6 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  // ОБНОВЕНА ФУНКЦИЯ: Автоматично маркиране при достигане на 90%
   const handleVideoCompleted = async () => {
     const content = getCourseContent(course);
     const selectedContent = content[selectedContentIndex];
@@ -259,7 +275,6 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  // НОВА ФУНКЦИЯ: Ръчно маркиране като завършено
   const markVideoAsCompleted = async (contentIndex) => {
     const content = getCourseContent(course);
     const selectedContent = content[contentIndex];
@@ -290,7 +305,6 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  // НОВА ФУНКЦИЯ: Премахване на завършването
   const handleMarkVideoUncompleted = async (contentId) => {
     if (!user?.email || !contentId) return;
     
@@ -323,7 +337,6 @@ const EnhancedCourseDetailPage = () => {
     try {
       console.log(`✅ Маркиране на задача като завършена: ${assignmentId}`);
       
-      // За задачи използваме същата функция, но ще трябва да адаптираме backend-а
       const result = await completeVideo(user.email, courseId, assignmentId);
       
       if (result.success) {
@@ -396,25 +409,82 @@ const EnhancedCourseDetailPage = () => {
     );
   }
 
+  // Обработка на грешки
   if (error || !course) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <AlertCircle className="text-red-500 mx-auto mb-4" size={64} />
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">Грешка при зареждане</h3>
-          <p className="text-gray-600 mb-6">{error || 'Курсът не е намерен'}</p>
+        <div className="text-center max-w-md mx-4">
+          {/* Икона според типа грешка */}
+          {errorType === 'notfound' && (
+            <Database className="text-gray-400 mx-auto mb-4" size={64} />
+          )}
+          {errorType === 'network' && (
+            <WifiOff className="text-orange-400 mx-auto mb-4" size={64} />
+          )}
+          {errorType === 'permission' && (
+            <Lock className="text-red-400 mx-auto mb-4" size={64} />
+          )}
+          {(!errorType || errorType === 'unknown') && (
+            <AlertCircle className="text-red-500 mx-auto mb-4" size={64} />
+          )}
+          
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            {errorType === 'notfound' && 'Курс не е намерен'}
+            {errorType === 'network' && 'Проблем с връзката'}
+            {errorType === 'permission' && 'Няма достъп'}
+            {(!errorType || errorType === 'unknown') && 'Грешка при зареждане'}
+          </h3>
+          
+          <p className="text-gray-600 mb-6">
+            {error || 'Курсът не е намерен или е бил премахнат'}
+          </p>
+          
+          <div className="bg-blue-50 rounded-lg p-4 mb-6 text-left">
+            <h4 className="font-semibold text-blue-800 mb-2">Възможни причини:</h4>
+            <ul className="text-sm text-blue-700 space-y-1">
+              {errorType === 'notfound' && (
+                <>
+                  <li>• Курсът е бил изтрит или деактивиран</li>
+                  <li>• Невалиден линк към курс</li>
+                  <li>• Курсът не е публикуван още</li>
+                </>
+              )}
+              {errorType === 'network' && (
+                <>
+                  <li>• Няма интернет връзка</li>
+                  <li>• Firestore е временно недостъпен</li>
+                  <li>• Проблем със сървъра</li>
+                </>
+              )}
+              {errorType === 'permission' && (
+                <>
+                  <li>• Нямате достъп до този курс</li>
+                  <li>• Курсът изисква по-високи права</li>
+                  <li>• Свържете се с администратор</li>
+                </>
+              )}
+              {(!errorType || errorType === 'unknown') && (
+                <>
+                  <li>• Временен проблем със системата</li>
+                  <li>• Грешка при зареждане на данни</li>
+                  <li>• Опитайте да презаредите</li>
+                </>
+              )}
+            </ul>
+          </div>
+          
           <div className="space-y-3">
             <button
               onClick={handleRefreshCourse}
               disabled={refreshing}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center mx-auto"
+              className="w-full bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center justify-center"
             >
               <RefreshCw size={16} className={`mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Презарежда...' : 'Опитай отново'}
             </button>
             <Link
               to="/courses"
-              className="block bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors"
+              className="block w-full bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors text-center"
             >
               Обратно към курсовете
             </Link>
@@ -622,9 +692,9 @@ const EnhancedCourseDetailPage = () => {
                           title={selectedContent.title}
                           autoplay={false}
                           isCompleted={isContentCompleted(selectedContent)}
-                          onVideoCompleted={handleVideoCompleted} // Автоматично маркиране
-                          onVideoProgress={handleVideoProgress} // Проследяване на прогреса
-                          onMarkUncompleted={() => handleMarkVideoUncompleted(selectedContent.id)} // Премахване на завършването
+                          onVideoCompleted={handleVideoCompleted}
+                          onVideoProgress={handleVideoProgress}
+                          onMarkUncompleted={() => handleMarkVideoUncompleted(selectedContent.id)}
                         />
                         
                         <div className="p-6">
@@ -642,7 +712,6 @@ const EnhancedCourseDetailPage = () => {
                                   <Clock size={16} className="mr-1" />
                                   {selectedContent.duration || '0:00'}
                                 </span>
-                                {/* Показваме прогреса на видеото ако има такъв */}
                                 {videoProgress[selectedContent.id] && (
                                   <span className="flex items-center">
                                     <BarChart size={16} className="mr-1" />
@@ -685,7 +754,6 @@ const EnhancedCourseDetailPage = () => {
                             </p>
                           )}
 
-                          {/* Информация за автоматично маркиране */}
                           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-center text-blue-700">
                               <AlertCircle size={16} className="mr-2" />
@@ -780,7 +848,6 @@ const EnhancedCourseDetailPage = () => {
                                   <span className="text-xs text-green-600 font-medium">
                                     Готово ✓
                                   </span>
-                                  {/* Бутон за премахване на завършването в списъка */}
                                   {item.type === CONTENT_TYPES.VIDEO && (
                                     <button
                                       onClick={(e) => {
@@ -801,7 +868,6 @@ const EnhancedCourseDetailPage = () => {
                                 {item.description}
                               </p>
                             )}
-                            {/* Показваме прогреса на видеото в списъка */}
                             {item.type === CONTENT_TYPES.VIDEO && videoProgress[item.id] && !isContentCompleted(item) && (
                               <div className="mt-1">
                                 <div className="w-full bg-gray-200 rounded-full h-1">
@@ -821,7 +887,6 @@ const EnhancedCourseDetailPage = () => {
                     ))}
                   </div>
                   
-                  {/* Course Completion Status */}
                   {isCourseCompleted && (
                     <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-t border-green-200">
                       <div className="flex items-center text-green-700">
@@ -842,7 +907,6 @@ const EnhancedCourseDetailPage = () => {
                 
                 {/* Navigation Controls */}
                 <div className="mt-6 space-y-3">
-                  {/* Previous Content */}
                   {selectedContentIndex > 0 && (
                     <button
                       onClick={() => setSelectedContentIndex(selectedContentIndex - 1)}
@@ -853,7 +917,6 @@ const EnhancedCourseDetailPage = () => {
                     </button>
                   )}
                   
-                  {/* Next Content */}
                   {!isLastContent && (
                     <button
                       onClick={() => setSelectedContentIndex(selectedContentIndex + 1)}
@@ -879,7 +942,6 @@ const EnhancedCourseDetailPage = () => {
                     </button>
                   )}
                   
-                  {/* Course Completion Message */}
                   {isLastContent && isContentCompleted(selectedContent) && isCourseCompleted && (
                     <div className="text-center p-6 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl border-2 border-green-200">
                       <Award className="mx-auto mb-3 text-green-600" size={48} />
@@ -924,7 +986,6 @@ const EnhancedCourseDetailPage = () => {
                     </div>
                   )}
 
-                  {/* Auto-completion Info */}
                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                     <div className="flex items-start">
                       <AlertCircle className="text-blue-600 mt-0.5 mr-2 flex-shrink-0" size={16} />
