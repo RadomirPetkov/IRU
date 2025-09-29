@@ -1,3 +1,4 @@
+/* src/App.css - Актуализирана версия */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,21 +53,28 @@
 .navbar-header {
   float: left !important;
 }
+@media (max-width: 767px) {
+  .navbar-header {
+    width: 100% !important;
+    position: relative !important;
+  }
+}
 
 /* Мобилен hamburger бутон */
 .navbar-toggle {
-  position: relative !important;
-  float: right !important;
+  position: absolute !important;
+  right: 15px !important;
+  top: 8px !important;
+  float: none !important;
   padding: 9px 10px !important;
-  margin-top: 8px !important;
-  margin-right: 15px !important;
-  margin-bottom: 8px !important;
+  margin: 0 !important;
   background-color: transparent !important;
   background-image: none !important;
   border: 1px solid #ddd !important;
   border-radius: 4px !important;
   cursor: pointer !important;
   transition: all 0.2s ease-in-out !important;
+  z-index: 1050 !important;
 }
 
 .navbar-toggle:hover,
@@ -96,7 +104,7 @@
   overflow-x: visible !important;
   -webkit-overflow-scrolling: touch !important;
   border-top: 1px solid transparent !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   transition: all 0.35s ease !important;
 }
 
@@ -181,125 +189,157 @@
   .navbar-toggle {
     display: none !important;
   }
-  
+
   .navbar-collapse {
     width: auto !important;
     border-top: 0 !important;
     box-shadow: none !important;
   }
-  
+
   .navbar-collapse.collapse {
     display: block !important;
     height: auto !important;
     padding-bottom: 0 !important;
     overflow: visible !important;
   }
-  
+
   .navbar-nav {
     float: left !important;
     margin: 0 !important;
   }
-  
+
   .navbar-nav > li {
     float: left !important;
   }
-  
+
   .navbar-right {
     float: right !important;
     margin-right: -15px !important;
   }
-  
+
   .navbar-login-btn .login-text {
     display: inline !important;
   }
 }
 
-/* Mobile/Tablet показване */
+/* Mobile/Tablet показване - ОБНОВЕНО ЗА ДЯСНО МЕНЮ */
 @media (max-width: 767px) {
   .navbar-toggle {
     display: block !important;
     position: relative !important;
     float: right !important;
   }
-  
+
   .navbar-toggle.collapsed {
     display: block !important;
   }
-  
+
+  /* КЛЮЧОВА ПРОМЯНА: Позициониране на менюто от дясно */
   .navbar-collapse {
-    width: 100% !important;
+    position: fixed !important;
+    top: 50px !important;
+    right: 0 !important;
+    width: 80% !important;
+    max-width: 300px !important;
+    height: calc(100vh - 50px) !important;
     margin-top: 0 !important;
     background-color: #f8f8f8 !important;
-    border-top: 1px solid #e7e7e7 !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-    clear: both !important;
+    border-left: 1px solid #e7e7e7 !important;
+    border-top: none !important;
+    box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.1) !important;
+    clear: none !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.3s ease-in-out !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 1000 !important;
   }
-  
-  .navbar-collapse.collapse {
-    display: none !important;
-    height: 0px !important;
-    overflow: hidden !important;
-  }
-  
-  .navbar-collapse.collapse.in {
-    display: block !important;
-    height: auto !important;
+  .navbar-auth-item {
+    position: static !important;
     overflow: visible !important;
   }
-  
+
+  .navbar-user-profile {
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  .navbar-collapse.collapse {
+    display: block !important;
+    transform: translateX(100%) !important;
+  }
+
+  .navbar-collapse.collapse.in {
+    display: block !important;
+    transform: translateX(0) !important;
+  }
+
   /* Форсираме показването на collapse.in състоянието */
   .navbar-collapse.in {
     display: block !important;
-    height: auto !important;
-    overflow: visible !important;
+    transform: translateX(0) !important;
   }
-  
+
   .navbar-nav {
     float: none !important;
     margin: 0 !important;
+    padding-top: 10px !important;
   }
-  
+
   .navbar-nav > li {
     float: none !important;
     border-bottom: 1px solid #e7e7e7 !important;
   }
-  
+
   .navbar-nav > li:last-child {
     border-bottom: none !important;
   }
-  
+
   .navbar-nav > li > a {
     padding: 15px 20px !important;
     display: block !important;
+    text-align: left !important;
   }
-  
+
   .navbar-nav > li > a:hover {
     background-color: rgba(0, 0, 0, 0.05) !important;
   }
-  
+
   .navbar-right {
     float: none !important;
     margin-right: 0 !important;
   }
-  
+
   .navbar-auth-item {
     margin: 15px 20px !important;
     padding: 10px 0 !important;
     border-top: 1px solid #e7e7e7 !important;
   }
-  
+
   .navbar-user-profile {
     margin: 0 !important;
   }
-  
+
   .navbar-login-btn {
     width: 100% !important;
     justify-content: center !important;
     padding: 12px 20px !important;
   }
-  
+
   .navbar-login-btn .login-text {
     display: inline !important;
+  }
+
+  /* Overlay за затваряне на менюто при клик извън него */
+  .navbar-collapse.in::before {
+    content: "" !important;
+    position: fixed !important;
+    top: 50px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: -1 !important;
   }
 }
 
@@ -348,9 +388,15 @@ html {
     padding-left: 10px !important;
     padding-right: 10px !important;
   }
-  
+
   .navbar-nav > li > a {
     padding: 12px 15px !important;
     font-size: 16px !important;
+  }
+
+  /* Осигуряваме, че менюто заема правилната ширина */
+  .navbar-collapse {
+    width: 85% !important;
+    max-width: 280px !important;
   }
 }

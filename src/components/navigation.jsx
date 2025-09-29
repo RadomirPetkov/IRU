@@ -1,4 +1,4 @@
-// src/components/navigation.jsx - Поправена версия без дублиран мобилен бутон
+// src/components/navigation.jsx - Поправена версия с дясно меню и фикс за текста
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -162,7 +162,6 @@ export const Navigation = (props) => {
       <nav id="menu" className="navbar navbar-default navbar-fixed-top">
         <div className="container w-[100%]">
           <div className="navbar-header">
-            {/* ЕДИНСТВЕН МОБИЛЕН БУТОН - в дясната страна */}
             {isMobile && (
               <button
                 type="button"
@@ -170,12 +169,6 @@ export const Navigation = (props) => {
                 onClick={toggleMobileMenu}
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="bs-example-navbar-collapse-1"
-                style={{
-                  position: "absolute",
-                  right: "15px",
-                  top: "8px",
-                  zIndex: 1000,
-                }}
               >
                 <span className="sr-only">Toggle navigation</span>
                 <span className="icon-bar"></span>
