@@ -145,7 +145,12 @@ export const courses = async () => {
       // Сортираме видеата във всеки курс по order
       const sortedCourses = activeCourses.map((course) => ({
         ...course,
-        videos: (course.videos || []).sort(
+        videos:
+          course.content
+            ?.filter((c) => c.type === "video")
+            .sort((a, b) => (a.order || 0) - (b.order || 0)) ||
+          (course.videos || []).sort((a, b) => (a.order || 0) - (b.order || 0)),
+        content: (course.content || []).sort(
           (a, b) => (a.order || 0) - (b.order || 0)
         ),
       }));
@@ -174,10 +179,17 @@ export const getCourseById = async (courseId) => {
     const result = await getFirestoreCourse(courseId);
 
     if (result.success) {
-      // Сортираме видеата по order
+      // Сортираме съдържанието по order
       const course = {
         ...result.data,
-        videos: (result.data.videos || []).sort(
+        videos:
+          result.data.content
+            ?.filter((c) => c.type === "video")
+            .sort((a, b) => (a.order || 0) - (b.order || 0)) ||
+          (result.data.videos || []).sort(
+            (a, b) => (a.order || 0) - (b.order || 0)
+          ),
+        content: (result.data.content || []).sort(
           (a, b) => (a.order || 0) - (b.order || 0)
         ),
       };

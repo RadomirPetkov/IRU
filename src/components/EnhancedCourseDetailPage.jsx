@@ -986,16 +986,7 @@ const EnhancedCourseDetailPage = () => {
                     </div>
                   )}
 
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <div className="flex items-start">
-                      <AlertCircle className="text-blue-600 mt-0.5 mr-2 flex-shrink-0" size={16} />
-                      <div className="text-xs text-blue-700">
-                        <p className="font-semibold mb-1">Автоматично завършване</p>
-                        <p className="mb-2">Видеата се маркират автоматично като завършени при достигане на 90% от съдържанието.</p>
-                        <p>Можете да премахнете завършването с бутона <Undo size={12} className="inline mx-1" /> "Отмени".</p>
-                      </div>
-                    </div>
-                  </div>
+                  
                 </div>
               </div>
             </div>
