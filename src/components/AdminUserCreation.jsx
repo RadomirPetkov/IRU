@@ -126,16 +126,8 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
       // Нормализираме имейла
       const normalizedEmail = formData.email.trim().toLowerCase();
 
-      console.log("🔄 Създаване на потребител с данни:", {
-        email: normalizedEmail,
-        password: "***",
-        displayName: formData.displayName || normalizedEmail.split("@")[0],
-        role: formData.role,
-        courses: formData.courses,
-      });
-
       const result = await adminCreateUser(adminEmail, {
-        email: normalizedEmail, // 🆕 ПРОМЕНЕНО
+        email: normalizedEmail,
         password: formData.password,
         displayName: formData.displayName || normalizedEmail.split("@")[0],
         role: formData.role,
@@ -144,8 +136,6 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
 
       if (result.success) {
         setSuccess(`✅ Потребител ${normalizedEmail} е създаден успешно!`);
-
-        console.log("🎉 Потребител създаден успешно:", result);
 
         // Изчистваме формата
         setFormData({
@@ -168,11 +158,9 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
         }, 3000);
       } else {
         setError(result.error || "Грешка при създаване на потребител");
-        console.error("❌ Грешка при създаване:", result);
       }
     } catch (error) {
       setError("Неочаквана грешка: " + error.message);
-      console.error("❌ Неочаквана грешка:", error);
     } finally {
       setLoading(false);
     }
@@ -470,28 +458,6 @@ const AdminUserCreation = ({ adminEmail, onUserCreated, onClose }) => {
               )}
             </button>
           </div>
-
-          {/* Debug Info (само в development) */}
-          {process.env.NODE_ENV === "development" && (
-            <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
-              <strong>Debug Info:</strong>
-              <pre className="mt-1 text-gray-600">
-                {JSON.stringify(
-                  {
-                    email: formData.email,
-                    hasPassword: !!formData.password,
-                    passwordLength: formData.password.length,
-                    role: formData.role,
-                    coursesCount: formData.courses.length,
-                    availableCoursesCount: availableCourses.length,
-                    coursesLoading,
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-          )}
         </form>
       </div>
     </div>

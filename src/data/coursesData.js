@@ -133,7 +133,6 @@ export const courses = async () => {
   }
 
   try {
-    console.log("🔄 Зареждане на курсове от Firestore...");
     const result = await getFirestoreCourses();
 
     if (result.success && result.data.length > 0) {
@@ -165,7 +164,6 @@ export const courses = async () => {
     }
   } catch (error) {
     console.error("❌ Грешка при зареждане от Firestore:", error);
-    console.log("🔄 Използваме fallback данни");
     return fallbackCourses;
   }
 };
@@ -230,7 +228,6 @@ export const getCachedCourses = () => {
 export const clearCoursesCache = () => {
   coursesCache = null;
   cacheTimestamp = null;
-  console.log("🗑️ Кешът на курсовете е изчистен");
 };
 
 /**

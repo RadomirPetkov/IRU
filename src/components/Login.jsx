@@ -28,8 +28,7 @@ const Login = ({ onClose, onLoginSuccess }) => {
 
     // Нормализираме имейла преди изпращане
     const normalizedEmail = formData.email.trim().toLowerCase();
-
-    const result = await loginUser(normalizedEmail, formData.password); // 🆕 ПРОМЕНЕНО
+    const result = await loginUser(normalizedEmail, formData.password);
 
     if (result.success) {
       onLoginSuccess && onLoginSuccess(result.user);

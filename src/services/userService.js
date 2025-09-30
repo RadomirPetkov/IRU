@@ -500,10 +500,6 @@ export const uncompleteVideo = async (userEmail, courseId, videoId) => {
       return { success: false, error: "Невалидни данни" };
     }
 
-    console.log(
-      `🔄 Премахване на завършването на видео: ${videoId} за потребител ${normalizedEmail}`
-    );
-
     const result = await markVideoAsUncompleted(
       normalizedEmail,
       courseId,
@@ -511,7 +507,6 @@ export const uncompleteVideo = async (userEmail, courseId, videoId) => {
     );
 
     if (result.success) {
-      console.log(`✅ Видео ${videoId} успешно премахнато от завършени`);
     } else {
       console.error(
         `❌ Грешка при премахване на завършването: ${result.error}`

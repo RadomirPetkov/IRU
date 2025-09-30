@@ -363,10 +363,6 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
       return { success: false, error: "Невалидни данни" };
     }
 
-    console.log(
-      `📹 Маркиране на видео ${videoId} като завършено за ${normalizedEmail}`
-    );
-
     // Първо проверяваме дали документът съществува
     const videoProgressRef = doc(
       db,
@@ -379,7 +375,6 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
 
     if (!videoProgressSnap.exists()) {
       // АКО НЕ СЪЩЕСТВУВА, СЪЗДАВАМЕ ГО
-      console.log(`📝 Създаване на нов video progress документ за ${videoId}`);
       await setDoc(videoProgressRef, {
         courseId,
         videoId,
@@ -391,7 +386,6 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
       });
     } else {
       // АКО СЪЩЕСТВУВА, ОБНОВЯВАМЕ ГО
-      console.log(`📝 Обновяване на съществуващ video progress за ${videoId}`);
       await updateDoc(videoProgressRef, {
         completedAt: serverTimestamp(),
         isCompleted: true,
@@ -427,21 +421,13 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
         // Ако курсът е завършен
         if (progressPercentage === 100) {
           updateData.completedAt = serverTimestamp();
-          console.log(`🎉 Курс ${courseId} завършен на 100%!`);
         }
 
         await updateDoc(courseProgressRef, updateData);
-        console.log(
-          `✅ Прогрес обновен: ${newCompletedVideos.length}/${
-            courseData.totalVideos
-          } (${Math.round(progressPercentage)}%)`
-        );
       } else {
-        console.log(`ℹ️ Видео ${videoId} вече е маркирано като завършено`);
       }
     } else {
       // АКО КУРСОВИЯТ ПРОГРЕС НЕ СЪЩЕСТВУВА, СЪЗДАВАМЕ ГО
-      console.log(`📝 Създаване на нов course progress за курс ${courseId}`);
       await setDoc(courseProgressRef, {
         courseId,
         enrolledAt: serverTimestamp(),
@@ -468,10 +454,6 @@ export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
     if (!normalizedEmail || !courseId || !videoId) {
       return { success: false, error: "Невалидни данни" };
     }
-
-    console.log(
-      `🔄 Премахване на завършването на видео ${videoId} за ${normalizedEmail}`
-    );
 
     // Обновяване на видео прогреса
     const videoProgressRef = doc(
@@ -518,12 +500,6 @@ export const markVideoAsUncompleted = async (userEmail, courseId, videoId) => {
       };
 
       await updateDoc(courseProgressRef, updateData);
-      console.log(
-        `✅ Прогрес обновен: ${newCompletedVideos.length}/${
-          courseData.totalVideos
-        } (${Math.round(progressPercentage)}%)`
-      );
-      console.log(`📉 Видео ${videoId} премахнато от завършени`);
     }
 
     return { success: true };
@@ -670,7 +646,6 @@ export const getAllUsers = async () => {
       }
     }
 
-    console.log(`✅ Заредени ${users.length} потребители`);
     return { success: true, data: users };
   } catch (error) {
     console.error("Error getting all users:", error);
