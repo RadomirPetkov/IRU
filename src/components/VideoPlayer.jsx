@@ -579,7 +579,7 @@ const YouTubePlayer = ({
 
         {/* Progress Bar */}
         {watchProgress > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4 hidden">
             <div className="bg-white/20 rounded-full h-2">
               <div
                 className="bg-blue-500 h-full rounded-full transition-all duration-300"
