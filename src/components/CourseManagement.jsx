@@ -1,4 +1,4 @@
-// src/components/CourseManagement.jsx - Обновена версия с функционалност за подреждане
+// src/components/CourseManagement.jsx - Обновена версия с файлове вместо задачи
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -15,8 +15,8 @@ import {
   Clock,
   BookOpen,
   Video,
-  RotateCcw,
-  Move3D
+  Move3D,
+  FolderOpen
 } from 'lucide-react';
 import {
   getAllCourses,
@@ -26,11 +26,10 @@ import {
   addContentToCourse,
   removeContentFromCourse,
   getCourseContentStats,
-  migrateLegacyCourse,
   CONTENT_TYPES,
-  ASSIGNMENT_TYPES
+  FILE_TYPES
 } from '../firebase/courses';
-import AssignmentManagement from './AssignmentManagement';
+import FileManagement from './FileManagement';
 import ContentOrderManager from './ContentOrderManager';
 
 const EnhancedCourseManagement = ({ adminEmail }) => {
@@ -129,7 +128,7 @@ const EnhancedCourseManagement = ({ adminEmail }) => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-800">Управление на курсове</h2>
-          <p className="text-gray-600 mt-2">Създавайте и редактирайте курсове, видеа и задачи</p>
+          <p className="text-gray-600 mt-2">Създавайте и редактирайте курсове, видеа и файлове</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -215,7 +214,7 @@ const EnhancedCourseManagement = ({ adminEmail }) => {
   );
 };
 
-// Обновена карта на курс с поддръжка за смесено съдържание И подреждане
+// Карта на курс с поддръжка за видеа и файлове
 const EnhancedCourseCard = ({ 
   course, 
   onEdit, 
@@ -228,36 +227,11 @@ const EnhancedCourseCard = ({
   const [showAddContent, setShowAddContent] = useState(false);
   const [showOrderManager, setShowOrderManager] = useState(false);
 
-  // Проверяваме дали курсът има новата структура
-  const hasNewStructure = course.content && Array.isArray(course.content);
-  const needsMigration = !hasNewStructure && course.videos && course.videos.length > 0;
-
-  // Получаваме съдържанието
-  const content = hasNewStructure ? course.content : [];
+  const content = course.content || [];
   const videos = content.filter(item => item.type === CONTENT_TYPES.VIDEO);
-  const assignments = content.filter(item => item.type === CONTENT_TYPES.ASSIGNMENT);
-  const legacyVideos = !hasNewStructure ? (course.videos || []) : [];
+  const files = content.filter(item => item.type === CONTENT_TYPES.FILE);
 
   const stats = getCourseContentStats(content);
-
-  const handleMigration = async () => {
-    if (!window.confirm('Това ще мигрира курса към новата структура. Продължи?')) {
-      return;
-    }
-
-    try {
-      const result = await migrateLegacyCourse(course.id, adminEmail);
-      
-      if (result.success) {
-        alert('Курсът е мигриран успешно!');
-        onUpdate();
-      } else {
-        alert('Грешка при миграция: ' + result.error);
-      }
-    } catch (error) {
-      alert('Грешка при миграция на курс');
-    }
-  };
 
   const handleAddContent = async (contentData) => {
     try {
@@ -288,41 +262,23 @@ const EnhancedCourseCard = ({
                   <BookOpen size={16} className="mr-1" />
                   Ниво {course.level}
                 </span>
-                {hasNewStructure ? (
-                  <>
-                    <span className="flex items-center">
-                      <Video size={16} className="mr-1" />
-                      {stats.videos} видеа
-                    </span>
-                    <span className="flex items-center">
-                      <FileText size={16} className="mr-1" />
-                      {stats.assignments} задачи
-                    </span>
-                    <span className="flex items-center">
-                      <Clock size={16} className="mr-1" />
-                      {stats.total} елемента
-                    </span>
-                  </>
-                ) : (
-                  <span className="flex items-center">
-                    <Play size={16} className="mr-1" />
-                    {legacyVideos.length} видеа (стара структура)
-                  </span>
-                )}
+                <span className="flex items-center">
+                  <Video size={16} className="mr-1" />
+                  {stats.videos} видеа
+                </span>
+                <span className="flex items-center">
+                  <FileText size={16} className="mr-1" />
+                  {stats.files} файла
+                </span>
+                <span className="flex items-center">
+                  <Clock size={16} className="mr-1" />
+                  {stats.total} елемента
+                </span>
               </div>
             </div>
           </div>
           
           <div className="flex items-center space-x-3">
-            {needsMigration && (
-              <button
-                onClick={handleMigration}
-                className="bg-yellow-500 bg-opacity-80 p-2 rounded-lg hover:bg-opacity-100 transition-all text-sm"
-                title="Мигрирай към новата структура"
-              >
-                <RotateCcw size={16} />
-              </button>
-            )}
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="bg-white bg-opacity-20 p-2 rounded-lg hover:bg-opacity-30 transition-all"
@@ -351,132 +307,109 @@ const EnhancedCourseCard = ({
       {/* Course Content */}
       {!collapsed && (
         <div className="p-6">
-          {needsMigration ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <AlertCircle className="text-yellow-600 mr-3" size={24} />
-                <div>
-                  <h4 className="font-semibold text-yellow-800">Миграция на курс</h4>
-                  <p className="text-yellow-700 text-sm">
-                    Този курс използва старата структура. Мигрирайте го за да добавяте задачи.
-                  </p>
-                  <button
-                    onClick={handleMigration}
-                    className="mt-2 bg-yellow-600 text-white px-4 py-2 rounded text-sm hover:bg-yellow-700 transition-colors"
-                  >
-                    Мигрирай курса
-                  </button>
-                </div>
-              </div>
+          {/* Tabs */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'content'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Всичко съдържание ({stats.total})
+              </button>
+              <button
+                onClick={() => setActiveTab('videos')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'videos'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Видеа ({stats.videos})
+              </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'files'
+                    ? 'bg-green-100 text-green-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Файлове ({stats.files})
+              </button>
             </div>
-          ) : (
-            <>
-              {/* Tabs */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setActiveTab('content')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      activeTab === 'content'
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    Всичко съдържание ({stats.total})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('videos')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      activeTab === 'videos'
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    Видеа ({stats.videos})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('assignments')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      activeTab === 'assignments'
-                        ? 'bg-green-100 text-green-600'
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    Задачи ({stats.assignments})
-                  </button>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  {/* НОВИ БУТОНИ ЗА ПОДРЕЖДАНЕ */}
-                  {hasNewStructure && stats.total > 1 && (
-                    <button
-                      onClick={() => setShowOrderManager(true)}
-                      className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center text-sm"
-                      title="Подреди съдържанието"
-                    >
-                      <Move3D size={16} className="mr-1" />
-                      Подреди
-                    </button>
-                  )}
-                  
-                  <button
-                    onClick={() => setShowAddContent(true)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
-                  >
-                    <Plus size={16} className="mr-1" />
-                    Добави съдържание
-                  </button>
-                </div>
-              </div>
-
-              {/* Content Display */}
-              {activeTab === 'content' && (
-                <ContentList 
-                  content={content}
-                  courseId={course.id}
-                  adminEmail={adminEmail}
-                  onUpdate={onUpdate}
-                />
+            <div className="flex items-center space-x-2">
+              {stats.total > 1 && (
+                <button
+                  onClick={() => setShowOrderManager(true)}
+                  className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center text-sm"
+                  title="Подреди съдържанието"
+                >
+                  <Move3D size={16} className="mr-1" />
+                  Подреди
+                </button>
               )}
+              
+              <button
+                onClick={() => setShowAddContent(true)}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
+              >
+                <Plus size={16} className="mr-1" />
+                Добави съдържание
+              </button>
+            </div>
+          </div>
 
-              {activeTab === 'videos' && (
-                <VideoList 
-                  videos={videos}
-                  courseId={course.id}
-                  adminEmail={adminEmail}
-                  onUpdate={onUpdate}
-                />
-              )}
+          {/* Content Display */}
+          {activeTab === 'content' && (
+            <ContentList 
+              content={content}
+              courseId={course.id}
+              adminEmail={adminEmail}
+              onUpdate={onUpdate}
+            />
+          )}
 
-              {activeTab === 'assignments' && (
-                <AssignmentManagement
-                  courseId={course.id}
-                  assignments={assignments}
-                  onUpdate={onUpdate}
-                  adminEmail={adminEmail}
-                />
-              )}
+          {activeTab === 'videos' && (
+            <VideoList 
+              videos={videos}
+              courseId={course.id}
+              adminEmail={adminEmail}
+              onUpdate={onUpdate}
+            />
+          )}
 
-              {/* Add Content Form */}
-              {showAddContent && (
-                <AddContentForm
-                  courseId={course.id}
-                  onSubmit={handleAddContent}
-                  onCancel={() => setShowAddContent(false)}
-                  contentCount={stats.total}
-                />
-              )}
+          {activeTab === 'files' && (
+            <FileManagement
+              courseId={course.id}
+              files={files}
+              onUpdate={onUpdate}
+              adminEmail={adminEmail}
+            />
+          )}
 
-              {/* НОВИ МОДАЛ ЗА ПОДРЕЖДАНЕ */}
-              {showOrderManager && (
-                <ContentOrderManager
-                  course={course}
-                  onClose={() => setShowOrderManager(false)}
-                  onUpdate={onUpdate}
-                  adminEmail={adminEmail}
-                />
-              )}
-            </>
+          {/* Add Content Form */}
+          {showAddContent && (
+            <AddContentForm
+              courseId={course.id}
+              onSubmit={handleAddContent}
+              onCancel={() => setShowAddContent(false)}
+              contentCount={stats.total}
+            />
+          )}
+
+          {/* Order Manager Modal */}
+          {showOrderManager && (
+            <ContentOrderManager
+              course={course}
+              onClose={() => setShowOrderManager(false)}
+              onUpdate={onUpdate}
+              adminEmail={adminEmail}
+            />
           )}
         </div>
       )}
@@ -491,7 +424,7 @@ const ContentList = ({ content, courseId, adminEmail, onUpdate }) => {
       <div className="text-center py-8 bg-gray-50 rounded-lg">
         <BookOpen className="text-gray-400 mx-auto mb-4" size={48} />
         <h4 className="text-lg font-semibold text-gray-800 mb-2">Няма съдържание</h4>
-        <p className="text-gray-600">Добавете видеа и задачи за този курс</p>
+        <p className="text-gray-600">Добавете видеа и файлове за този курс</p>
       </div>
     );
   }
@@ -535,18 +468,12 @@ const ContentList = ({ content, courseId, adminEmail, onUpdate }) => {
               <h5 className="font-medium text-gray-800">{item.title}</h5>
               <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                 <span>
-                  {item.type === CONTENT_TYPES.VIDEO ? 'Видео' : 'Задача'}
+                  {item.type === CONTENT_TYPES.VIDEO ? 'Видео' : item.fileType || 'Файл'}
                 </span>
                 {item.duration && (
                   <span className="flex items-center">
                     <Clock size={12} className="mr-1" />
                     {item.duration}
-                  </span>
-                )}
-                {item.estimatedTime && (
-                  <span className="flex items-center">
-                    <Clock size={12} className="mr-1" />
-                    {item.estimatedTime}
                   </span>
                 )}
                 <span>Позиция {item.order}</span>
@@ -627,16 +554,10 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
     description: '',
     duration: '',
     category: 'Видео лекция',
-    // За задачи
-    assignmentType: ASSIGNMENT_TYPES.DOCUMENT,
-    instructions: '',
-    difficulty: 'medium',
-    estimatedTime: '30 мин',
-    documentUrl: '',
-    textContent: '',
-    linkUrl: '',
-    downloadable: true,
-    openInNewTab: true
+    // За файлове
+    fileName: '',
+    fileType: '',
+    driveUrl: ''
   });
 
   const handleSubmit = (e) => {
@@ -661,24 +582,16 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
         category: formData.category
       };
     } else {
-      const baseFields = {
-        assignmentType: formData.assignmentType,
-        description: formData.description,
-        instructions: formData.instructions,
-        difficulty: formData.difficulty,
-        estimatedTime: formData.estimatedTime
+      return {
+        fileName: formData.fileName || formData.title,
+        fileType: formData.fileType,
+        driveUrl: formData.driveUrl,
+        description: formData.description
       };
-
-      if (formData.assignmentType === ASSIGNMENT_TYPES.DOCUMENT) {
-        return { ...baseFields, documentUrl: formData.documentUrl, downloadable: formData.downloadable };
-      } else if (formData.assignmentType === ASSIGNMENT_TYPES.TEXT) {
-        return { ...baseFields, textContent: formData.textContent };
-      } else if (formData.assignmentType === ASSIGNMENT_TYPES.LINK) {
-        return { ...baseFields, linkUrl: formData.linkUrl, openInNewTab: formData.openInNewTab };
-      }
     }
-    return {};
   };
+
+  const fileTypeSuggestions = Object.values(FILE_TYPES);
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
@@ -705,13 +618,13 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
             <label className="flex items-center">
               <input
                 type="radio"
-                value={CONTENT_TYPES.ASSIGNMENT}
-                checked={contentType === CONTENT_TYPES.ASSIGNMENT}
+                value={CONTENT_TYPES.FILE}
+                checked={contentType === CONTENT_TYPES.FILE}
                 onChange={(e) => setContentType(e.target.value)}
                 className="mr-2"
               />
               <FileText size={16} className="mr-1" />
-              Задача
+              Файл
             </label>
           </div>
         </div>
@@ -788,69 +701,69 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
           </div>
         )}
 
-        {/* Assignment-specific fields */}
-        {contentType === CONTENT_TYPES.ASSIGNMENT && (
+        {/* File-specific fields */}
+        {contentType === CONTENT_TYPES.FILE && (
           <div className="space-y-4 border-t pt-4">
-            <h5 className="font-medium text-gray-800">Настройки за задача</h5>
+            <h5 className="font-medium text-gray-800">Настройки за файл</h5>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Тип задача
-                </label>
-                <select
-                  value={formData.assignmentType}
-                  onChange={(e) => setFormData({...formData, assignmentType: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={ASSIGNMENT_TYPES.DOCUMENT}>Документ (PDF, Word, Excel)</option>
-                  <option value={ASSIGNMENT_TYPES.TEXT}>Текстова задача</option>
-                  <option value={ASSIGNMENT_TYPES.LINK}>Външна връзка</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Трудност
-                </label>
-                <select
-                  value={formData.difficulty}
-                  onChange={(e) => setFormData({...formData, difficulty: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="easy">Лесно</option>
-                  <option value="medium">Средно</option>
-                  <option value="hard">Трудно</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Време
+                  Име на файла
                 </label>
                 <input
                   type="text"
-                  value={formData.estimatedTime}
-                  onChange={(e) => setFormData({...formData, estimatedTime: e.target.value})}
+                  value={formData.fileName}
+                  onChange={(e) => setFormData({...formData, fileName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="30 мин"
+                  placeholder="По подразбиране = заглавие"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Тип на файла
+                </label>
+                <input
+                  type="text"
+                  value={formData.fileType}
+                  onChange={(e) => setFormData({...formData, fileType: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Лекция, Програма, Задача..."
+                  list="fileTypeSuggestions"
+                />
+                <datalist id="fileTypeSuggestions">
+                  {fileTypeSuggestions.map((type) => (
+                    <option key={type} value={type} />
+                  ))}
+                </datalist>
               </div>
             </div>
             
-            {/* Specific assignment type fields - simplified for brevity */}
-            {formData.assignmentType === ASSIGNMENT_TYPES.DOCUMENT && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL на документа *
-                </label>
-                <input
-                  type="url"
-                  value={formData.documentUrl}
-                  onChange={(e) => setFormData({...formData, documentUrl: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Google Drive URL *
+              </label>
+              <input
+                type="url"
+                value={formData.driveUrl}
+                onChange={(e) => setFormData({...formData, driveUrl: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="https://drive.google.com/file/d/..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Описание
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="2"
+              />
+            </div>
           </div>
         )}
 
@@ -858,7 +771,7 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
         <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
           <button
             type="submit"
-            disabled={!formData.title}
+            disabled={!formData.title || (contentType === CONTENT_TYPES.VIDEO && !formData.url) || (contentType === CONTENT_TYPES.FILE && !formData.driveUrl)}
             className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             <Plus size={16} className="mr-2" />
@@ -878,7 +791,7 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
   );
 };
 
-// Модал за създаване на курс (запазен както е)
+// Модал за създаване на курс
 const CreateCourseModal = ({ onClose, onSubmit, existingCourses }) => {
   const [formData, setFormData] = useState({
     title: '',
@@ -1072,7 +985,7 @@ const CreateCourseModal = ({ onClose, onSubmit, existingCourses }) => {
   );
 };
 
-// Модал за редактиране на курс (запазен както е)
+// Модал за редактиране на курс
 const EditCourseModal = ({ course, onClose, onSubmit, existingCourses }) => {
   const [formData, setFormData] = useState({
     title: course.title,

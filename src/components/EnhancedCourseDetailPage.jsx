@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import VideoPlayer from '../components/VideoPlayer';
-import StudentAssignmentViewer from '../components/StudentAssignmentViewer';
+import StudentFileViewer from '../components/StudentFileViewer';
 import { 
   ArrowLeft, 
   Play, 
@@ -768,7 +768,7 @@ const EnhancedCourseDetailPage = () => {
 
                     {/* Assignment Content */}
                     {selectedContent.type === CONTENT_TYPES.ASSIGNMENT && (
-                      <StudentAssignmentViewer
+                      <StudentFileViewer
                         assignment={selectedContent}
                         isCompleted={isContentCompleted(selectedContent)}
                         onMarkComplete={markAssignmentAsCompleted}
