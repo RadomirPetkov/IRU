@@ -34,6 +34,7 @@ import {
 import FileManagement from './FileManagement';
 import ContentOrderManager from './ContentOrderManager';
 import AudioUploader from './AudioUploader';
+import TopicManagement from './TopicManagement';
 
 const EnhancedCourseManagement = ({ adminEmail }) => {
   const [courses, setCourses] = useState([]);
@@ -226,7 +227,7 @@ const EnhancedCourseCard = ({
   adminEmail 
 }) => {
   const [collapsed, setCollapsed] = useState(true);
-  const [activeTab, setActiveTab] = useState('content');
+  const [activeTab, setActiveTab] = useState('topics');
   const [showAddContent, setShowAddContent] = useState(false);
   const [showOrderManager, setShowOrderManager] = useState(false);
 
@@ -313,7 +314,18 @@ const EnhancedCourseCard = ({
         <div className="p-6">
           {/* Tabs */}
           <div className="flex items-center justify-between mb-6">
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setActiveTab('topics')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === 'topics'
+                    ? 'bg-purple-100 text-purple-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <BookOpen size={16} className="inline mr-1" />
+                Теми ({course.topics?.length || 0})
+              </button>
               <button
                 onClick={() => setActiveTab('content')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -322,7 +334,7 @@ const EnhancedCourseCard = ({
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
-                Всичко съдържание ({stats.total})
+                Всичко ({stats.total})
               </button>
               <button
                 onClick={() => setActiveTab('videos')}
@@ -363,10 +375,21 @@ const EnhancedCourseCard = ({
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center text-sm"
               >
                 <Plus size={16} className="mr-1" />
-                Добави съдържание
+                Добави
               </button>
             </div>
           </div>
+
+          {/* Topics Tab */}
+          {activeTab === 'topics' && (
+            <TopicManagement
+              courseId={course.id}
+              topics={course.topics || []}
+              content={content}
+              adminEmail={adminEmail}
+              onUpdate={onUpdate}
+            />
+          )}
 
           {/* Content Display */}
           {activeTab === 'content' && (
@@ -400,6 +423,7 @@ const EnhancedCourseCard = ({
           {showAddContent && (
             <AddContentForm
               courseId={course.id}
+              topics={course.topics || []}
               onSubmit={handleAddContent}
               onCancel={() => setShowAddContent(false)}
               contentCount={stats.total}
@@ -548,11 +572,12 @@ const VideoList = ({ videos, courseId, adminEmail, onUpdate }) => {
 };
 
 // Формуляр за добавяне на съдържание
-const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
+const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCount }) => {
   const [contentType, setContentType] = useState(CONTENT_TYPES.VIDEO);
   const [formData, setFormData] = useState({
     title: '',
     order: contentCount + 1,
+    topicId: '',
     // За видеа
     url: '',
     description: '',
@@ -575,6 +600,7 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
       type: contentType,
       title: formData.title,
       order: formData.order,
+      topicId: formData.topicId || null,
       ...getContentSpecificFields()
     };
 
@@ -682,7 +708,7 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
         </div>
 
         {/* Common Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Заглавие *
@@ -694,6 +720,23 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Тема
+            </label>
+            <select
+              value={formData.topicId}
+              onChange={(e) => setFormData({...formData, topicId: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Без тема</option>
+              {topics.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.icon} {topic.title}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -1,4 +1,4 @@
-// src/firebase/courses.js - Обновена версия с файлове вместо задачи
+// src/firebase/courses.js - Обновена версия с теми (секции)
 import { 
   doc, 
   getDoc, 
@@ -31,6 +31,278 @@ export const FILE_TYPES = {
   OTHER: 'Друго'
 };
 
+// ============= ПОМОЩНИ ФУНКЦИИ ЗА ТЕМИ =============
+
+/**
+ * Генериране на ID за тема
+ */
+const generateTopicId = () => {
+  return `topic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+/**
+ * Получаване на всички теми от курс
+ */
+export const getCourseTopics = (course) => {
+  if (!course) return [];
+  return course.topics || [];
+};
+
+/**
+ * Получаване на съдържание за конкретна тема
+ */
+export const getTopicContent = (course, topicId) => {
+  if (!course || !course.content) return [];
+  
+  if (!topicId || topicId === 'all') {
+    return course.content.filter(c => c.isActive !== false).sort((a, b) => a.order - b.order);
+  }
+  
+  return course.content
+    .filter(c => c.topicId === topicId && c.isActive !== false)
+    .sort((a, b) => a.order - b.order);
+};
+
+/**
+ * Получаване на съдържание без тема
+ */
+export const getUncategorizedContent = (course) => {
+  if (!course || !course.content) return [];
+  return course.content
+    .filter(c => !c.topicId && c.isActive !== false)
+    .sort((a, b) => a.order - b.order);
+};
+
+/**
+ * Добавяне на тема към курс
+ */
+export const addTopicToCourse = async (courseId, topicData, adminEmail) => {
+  try {
+    if (!courseId || !topicData || !adminEmail) {
+      return { success: false, error: 'Невалидни данни' };
+    }
+
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    
+    if (!courseSnap.exists()) {
+      return { success: false, error: 'Курсът не съществува' };
+    }
+
+    const currentTopics = courseSnap.data().topics || [];
+    const topicId = generateTopicId();
+    
+    const newTopic = {
+      id: topicId,
+      title: topicData.title,
+      description: topicData.description || '',
+      order: topicData.order || currentTopics.length + 1,
+      icon: topicData.icon || '📖',
+      color: topicData.color || 'blue',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      createdBy: adminEmail
+    };
+
+    const updatedTopics = [...currentTopics, newTopic].sort((a, b) => a.order - b.order);
+    
+    await updateDoc(courseRef, {
+      topics: updatedTopics,
+      updatedAt: serverTimestamp(),
+      updatedBy: adminEmail
+    });
+
+    return { success: true, data: newTopic };
+  } catch (error) {
+    console.error('Error adding topic to course:', error);
+    return { success: false, error: 'Грешка при добавяне на тема' };
+  }
+};
+
+/**
+ * Обновяване на тема
+ */
+export const updateTopic = async (courseId, topicId, topicData, adminEmail) => {
+  try {
+    if (!courseId || !topicId || !topicData || !adminEmail) {
+      return { success: false, error: 'Невалидни данни' };
+    }
+
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    
+    if (!courseSnap.exists()) {
+      return { success: false, error: 'Курсът не съществува' };
+    }
+
+    const currentTopics = courseSnap.data().topics || [];
+    const topicIndex = currentTopics.findIndex(t => t.id === topicId);
+    
+    if (topicIndex === -1) {
+      return { success: false, error: 'Темата не съществува' };
+    }
+
+    const updatedTopics = [...currentTopics];
+    updatedTopics[topicIndex] = {
+      ...updatedTopics[topicIndex],
+      ...topicData,
+      updatedAt: new Date().toISOString(),
+      updatedBy: adminEmail
+    };
+
+    if (topicData.order !== undefined) {
+      updatedTopics.sort((a, b) => a.order - b.order);
+    }
+
+    await updateDoc(courseRef, {
+      topics: updatedTopics,
+      updatedAt: serverTimestamp(),
+      updatedBy: adminEmail
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating topic:', error);
+    return { success: false, error: 'Грешка при обновяване на тема' };
+  }
+};
+
+/**
+ * Изтриване на тема (и преместване на съдържанието в некатегоризирани)
+ */
+export const deleteTopic = async (courseId, topicId, adminEmail) => {
+  try {
+    if (!courseId || !topicId || !adminEmail) {
+      return { success: false, error: 'Невалидни данни' };
+    }
+
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    
+    if (!courseSnap.exists()) {
+      return { success: false, error: 'Курсът не съществува' };
+    }
+
+    const courseData = courseSnap.data();
+    const currentTopics = courseData.topics || [];
+    const currentContent = courseData.content || [];
+    
+    // Премахваме темата
+    const updatedTopics = currentTopics.filter(t => t.id !== topicId);
+    
+    // Премахваме topicId от съдържанието на тази тема
+    const updatedContent = currentContent.map(c => {
+      if (c.topicId === topicId) {
+        const { topicId: _, ...rest } = c;
+        return rest;
+      }
+      return c;
+    });
+
+    await updateDoc(courseRef, {
+      topics: updatedTopics,
+      content: updatedContent,
+      updatedAt: serverTimestamp(),
+      updatedBy: adminEmail
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting topic:', error);
+    return { success: false, error: 'Грешка при изтриване на тема' };
+  }
+};
+
+/**
+ * Преместване на съдържание в друга тема
+ */
+export const moveContentToTopic = async (courseId, contentId, newTopicId, adminEmail) => {
+  try {
+    if (!courseId || !contentId || !adminEmail) {
+      return { success: false, error: 'Невалидни данни' };
+    }
+
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    
+    if (!courseSnap.exists()) {
+      return { success: false, error: 'Курсът не съществува' };
+    }
+
+    const currentContent = courseSnap.data().content || [];
+    const contentIndex = currentContent.findIndex(c => c.id === contentId);
+    
+    if (contentIndex === -1) {
+      return { success: false, error: 'Съдържанието не съществува' };
+    }
+
+    const updatedContent = [...currentContent];
+    if (newTopicId) {
+      updatedContent[contentIndex] = {
+        ...updatedContent[contentIndex],
+        topicId: newTopicId,
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminEmail
+      };
+    } else {
+      // Премахваме от тема (преместваме в некатегоризирани)
+      const { topicId: _, ...rest } = updatedContent[contentIndex];
+      updatedContent[contentIndex] = {
+        ...rest,
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminEmail
+      };
+    }
+
+    await updateDoc(courseRef, {
+      content: updatedContent,
+      updatedAt: serverTimestamp(),
+      updatedBy: adminEmail
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error moving content to topic:', error);
+    return { success: false, error: 'Грешка при преместване на съдържание' };
+  }
+};
+
+/**
+ * Пренареждане на теми
+ */
+export const reorderTopics = async (courseId, topicIds, adminEmail) => {
+  try {
+    if (!courseId || !topicIds || !adminEmail) {
+      return { success: false, error: 'Невалидни данни' };
+    }
+
+    const courseRef = doc(db, 'courses', courseId);
+    const courseSnap = await getDoc(courseRef);
+    
+    if (!courseSnap.exists()) {
+      return { success: false, error: 'Курсът не съществува' };
+    }
+
+    const currentTopics = courseSnap.data().topics || [];
+    
+    const updatedTopics = topicIds.map((id, index) => {
+      const topic = currentTopics.find(t => t.id === id);
+      return topic ? { ...topic, order: index + 1 } : null;
+    }).filter(Boolean);
+
+    await updateDoc(courseRef, {
+      topics: updatedTopics,
+      updatedAt: serverTimestamp(),
+      updatedBy: adminEmail
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error reordering topics:', error);
+    return { success: false, error: 'Грешка при пренареждане на теми' };
+  }
+};
+
 // ============= ОСНОВНИ CRUD ОПЕРАЦИИ =============
 
 /**
@@ -54,6 +326,7 @@ export const createCourse = async (courseData, adminEmail) => {
       icon: courseData.icon || '📚',
       prerequisite: courseData.prerequisite || null,
       estimatedHours: courseData.estimatedHours || 1,
+      topics: courseData.topics || [],
       content: courseData.content || [],
       isActive: true,
       createdAt: serverTimestamp(),
@@ -218,11 +491,23 @@ export const addContentToCourse = async (courseId, contentData, adminEmail) => {
     const currentContent = courseSnap.data().content || [];
     const contentId = generateContentId();
     
+    // Изчисляваме order спрямо темата ако има такава
+    let order = contentData.order;
+    if (!order) {
+      if (contentData.topicId) {
+        const topicContent = currentContent.filter(c => c.topicId === contentData.topicId);
+        order = topicContent.length + 1;
+      } else {
+        order = currentContent.length + 1;
+      }
+    }
+    
     const newContent = {
       id: contentId,
       type: contentData.type,
       title: contentData.title,
-      order: contentData.order || currentContent.length + 1,
+      order: order,
+      topicId: contentData.topicId || null,
       isActive: true,
       createdAt: new Date().toISOString(),
       createdBy: adminEmail,

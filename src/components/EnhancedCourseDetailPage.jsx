@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import VideoPlayer from '../components/VideoPlayer';
-import StudentFileViewer from '../components/StudentFileViewer';
+import VideoPlayer from './VideoPlayer';
+import StudentFileViewer from './StudentFileViewer';
+import CourseTopicsView from './CourseTopicsView';
 import { 
   ArrowLeft, 
   Play, 
@@ -828,97 +829,15 @@ const EnhancedCourseDetailPage = () => {
                     </p>
                   </div>
                   
-                  <div className="max-h-96 overflow-y-auto">
-                    {content.map((item, index) => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleContentSelection(index)}
-                        className={`p-4 cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 ${
-                          selectedContentIndex === index 
-                            ? 'bg-blue-50 border-l-4 border-l-blue-500 shadow-sm' 
-                            : ''
-                        }`}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 transition-all duration-200 ${
-                            isContentCompleted(item) 
-                              ? 'bg-green-500 text-white shadow-md' 
-                              : selectedContentIndex === index
-                                ? item.type === CONTENT_TYPES.VIDEO 
-                                  ? 'bg-blue-500 text-white shadow-md' 
-                                  : item.type === CONTENT_TYPES.AUDIO
-                                    ? 'bg-teal-500 text-white shadow-md'
-                                    : 'bg-orange-500 text-white shadow-md'
-                                : 'bg-gray-200 text-gray-600'
-                          }`}>
-                            {isContentCompleted(item) ? (
-                              <CheckCircle size={16} />
-                            ) : item.type === CONTENT_TYPES.VIDEO ? (
-                              <Play size={16} />
-                            ) : item.type === CONTENT_TYPES.AUDIO ? (
-                              <Music size={16} />
-                            ) : (
-                              <FileText size={16} />
-                            )}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h4 className={`font-medium text-sm leading-tight ${
-                              selectedContentIndex === index ? 'text-blue-600' : 'text-gray-800'
-                            }`}>
-                              {item.title}
-                            </h4>
-                            <div className="flex items-center justify-between mt-1">
-                              <span className="text-xs text-gray-500">
-                                {item.type === CONTENT_TYPES.VIDEO 
-                                  ? `Видео • ${item.duration || '0:00'}`
-                                  : item.type === CONTENT_TYPES.AUDIO
-                                    ? `Аудио • ${item.duration || '0:00'}`
-                                    : `${item.fileType || 'Файл'}`
-                                }
-                              </span>
-                              {isContentCompleted(item) && (
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-xs text-green-600 font-medium">
-                                    Готово ✓
-                                  </span>
-                                  {(item.type === CONTENT_TYPES.VIDEO || item.type === CONTENT_TYPES.AUDIO) && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMarkVideoUncompleted(item.id);
-                                      }}
-                                      className="text-red-500 hover:text-red-700 p-0.5 rounded"
-                                      title="Премахни завършването"
-                                    >
-                                      <X size={12} />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            {item.description && (
-                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                {item.description}
-                              </p>
-                            )}
-                            {item.type === CONTENT_TYPES.VIDEO && videoProgress[item.id] && !isContentCompleted(item) && (
-                              <div className="mt-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1">
-                                  <div 
-                                    className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                                    style={{ width: `${videoProgress[item.id].progressPercent}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs text-gray-500">
-                                  {Math.round(videoProgress[item.id].progressPercent)}% гледано
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="max-h-[600px] overflow-y-auto p-4">
+                    <CourseTopicsView
+                      topics={course.topics || []}
+                      content={content}
+                      completedContent={completedContent}
+                      selectedContentIndex={selectedContentIndex}
+                      onContentSelect={handleContentSelection}
+                      isEnrolled={hasAccessToCourse(courseId)}
+                    />
                   </div>
                   
                   {isCourseCompleted && (
