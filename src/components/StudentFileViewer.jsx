@@ -1,21 +1,88 @@
-// src/components/StudentFileViewer.jsx - Компонент за преглед на файлове от студенти
-import React, { useState } from 'react';
+// src/components/StudentFileViewer.jsx - Компонент за преглед на файлове с вградена визуализация
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   ExternalLink, 
   CheckCircle,
   Eye,
   EyeOff,
-  FolderOpen
+  FolderOpen,
+  Maximize2,
+  Minimize2,
+  AlertCircle,
+  Loader,
+  Image as ImageIcon,
+  FileSpreadsheet,
+  Presentation,
+  File
 } from 'lucide-react';
 
 const StudentFileViewer = ({ 
   file, 
   isCompleted = false, 
   onMarkComplete,
-  showFullContent = false 
+  showFullContent = true 
 }) => {
   const [expanded, setExpanded] = useState(showFullContent);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Конвертиране на Google Drive URL към embed URL
+  const getEmbedUrl = (driveUrl) => {
+    if (!driveUrl) return null;
+    
+    try {
+      // Формат: https://drive.google.com/file/d/FILE_ID/view
+      // или: https://drive.google.com/open?id=FILE_ID
+      let fileId = null;
+      
+      if (driveUrl.includes('/file/d/')) {
+        fileId = driveUrl.split('/file/d/')[1].split('/')[0];
+      } else if (driveUrl.includes('id=')) {
+        fileId = driveUrl.split('id=')[1].split('&')[0];
+      } else if (driveUrl.includes('/d/')) {
+        fileId = driveUrl.split('/d/')[1].split('/')[0];
+      }
+      
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/preview`;
+      }
+      
+      return null;
+    } catch (e) {
+      console.error('Error parsing Drive URL:', e);
+      return null;
+    }
+  };
+
+  // Определяне типа на файла от URL или име
+  const getFileExtension = () => {
+    const fileName = file.fileName || file.title || '';
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    return extension || 'unknown';
+  };
+
+  // Определяне на иконата според типа файл
+  const getFileIcon = () => {
+    const ext = getFileExtension();
+    
+    if (['pdf'].includes(ext)) {
+      return <FileText size={24} />;
+    } else if (['doc', 'docx'].includes(ext)) {
+      return <FileText size={24} />;
+    } else if (['xls', 'xlsx', 'csv'].includes(ext)) {
+      return <FileSpreadsheet size={24} />;
+    } else if (['ppt', 'pptx'].includes(ext)) {
+      return <Presentation size={24} />;
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+      return <ImageIcon size={24} />;
+    }
+    
+    return <File size={24} />;
+  };
+
+  const embedUrl = getEmbedUrl(file.driveUrl);
 
   const getFileTypeColor = (type) => {
     switch (type) {
@@ -29,43 +96,104 @@ const StudentFileViewer = ({
     }
   };
 
-  const handleOpenFile = () => {
-    if (file.driveUrl) {
-      window.open(file.driveUrl, '_blank', 'noopener,noreferrer');
-    }
+  const handleIframeLoad = () => {
+    setLoading(false);
+    setError(null);
   };
+
+  const handleIframeError = () => {
+    setLoading(false);
+    setError('Файлът не може да бъде визуализиран. Моля, използвайте бутона за отваряне в нов таб.');
+  };
+
+  // Reset loading state when file changes
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+  }, [file.driveUrl]);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  // Fullscreen overlay
+  if (isFullscreen && embedUrl) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 bg-gray-900">
+          <div className="flex items-center space-x-4">
+            <div className="p-2 bg-blue-600 rounded-lg text-white">
+              {getFileIcon()}
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-lg">{file.title}</h3>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getFileTypeColor(file.fileType)}`}>
+                {file.fileType || 'Файл'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <a
+              href={file.driveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <ExternalLink size={16} className="mr-2" />
+              Отвори в нов таб
+            </a>
+            
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              <Minimize2 size={20} />
+            </button>
+          </div>
+        </div>
+        
+        {/* Iframe */}
+        <div className="flex-1 relative">
+          <iframe
+            src={embedUrl}
+            className="w-full h-full border-0"
+            allow="autoplay"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-white border rounded-xl shadow-lg overflow-hidden transition-all duration-300 ${
-      isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200 hover:shadow-xl'
+      isCompleted ? 'border-green-200' : 'border-gray-200 hover:shadow-xl'
     }`}>
       {/* Header */}
-      <div className={`p-6 ${isCompleted ? 'bg-green-100' : 'bg-gradient-to-r from-blue-50 to-purple-50'}`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4">
-            <div className={`p-3 rounded-full ${
+      <div className={`p-4 sm:p-6 ${isCompleted ? 'bg-green-50' : 'bg-gradient-to-r from-blue-50 to-purple-50'}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start space-x-3 sm:space-x-4 flex-1 min-w-0">
+            <div className={`p-2 sm:p-3 rounded-full ${
               isCompleted ? 'bg-green-500' : 'bg-blue-500'
             } text-white flex-shrink-0`}>
-              {isCompleted ? <CheckCircle size={24} /> : <FileText size={24} />}
+              {isCompleted ? <CheckCircle size={20} className="sm:w-6 sm:h-6" /> : getFileIcon()}
             </div>
             
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2 break-words">
                 {file.title}
               </h3>
               
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className={`px-3 py-1 rounded-full border font-medium ${getFileTypeColor(file.fileType)}`}>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
+                <span className={`px-2 sm:px-3 py-1 rounded-full border font-medium text-xs sm:text-sm ${getFileTypeColor(file.fileType)}`}>
                   <FolderOpen size={12} className="inline mr-1" />
                   {file.fileType || 'Файл'}
                 </span>
                 
-                {file.fileName && file.fileName !== file.title && (
-                  <span className="text-gray-500">({file.fileName})</span>
-                )}
-
                 {isCompleted && (
-                  <span className="text-green-600 font-medium flex items-center">
+                  <span className="text-green-600 font-medium flex items-center text-xs sm:text-sm">
                     <CheckCircle size={12} className="mr-1" />
                     Прегледано
                   </span>
@@ -74,24 +202,36 @@ const StudentFileViewer = ({
             </div>
           </div>
 
-          {/* Expand Button */}
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className={`p-2 rounded-lg transition-colors ${
-              expanded 
-                ? 'bg-blue-100 text-blue-600' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-            title={expanded ? 'Свий' : 'Разгъни'}
-          >
-            {expanded ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
+          {/* Controls */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            {embedUrl && (
+              <button
+                onClick={toggleFullscreen}
+                className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                title="Цял екран"
+              >
+                <Maximize2 size={18} />
+              </button>
+            )}
+            
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className={`p-2 rounded-lg transition-colors ${
+                expanded 
+                  ? 'bg-blue-100 text-blue-600' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={expanded ? 'Свий' : 'Разгъни'}
+            >
+              {expanded ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </div>
 
-        {/* Description - always visible */}
+        {/* Description */}
         {file.description && (
           <div className="mt-4">
-            <p className="text-gray-700 leading-relaxed">
+            <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
               {file.description}
             </p>
           </div>
@@ -100,40 +240,102 @@ const StudentFileViewer = ({
 
       {/* Content - expandable */}
       {expanded && (
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           
-          {/* Google Drive Link */}
-          {file.driveUrl && (
-            <div className="border border-gray-200 rounded-lg p-6">
-              <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
-                <FileText size={18} className="mr-2" />
-                Файл от Google Drive
-              </h4>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 mb-1 truncate">
-                      {file.fileName || file.title}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Кликнете за да отворите файла в Google Drive
-                    </p>
-                  </div>
+          {/* Embedded Preview */}
+          {embedUrl ? (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              {/* Preview Header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <h4 className="font-semibold text-gray-800 flex items-center text-sm sm:text-base">
+                  <Eye size={16} className="mr-2" />
+                  Преглед на файла
+                </h4>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={toggleFullscreen}
+                    className="flex items-center px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    <Maximize2 size={14} className="mr-1" />
+                    <span className="hidden sm:inline">Цял екран</span>
+                  </button>
                   
                   <a
                     href={file.driveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    onClick={(e) => {
-                      // Track the click if needed
-                    }}
+                    className="flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    <ExternalLink size={16} className="mr-2" />
-                    Отвори файла
+                    <ExternalLink size={14} className="mr-1" />
+                    <span className="hidden sm:inline">Нов таб</span>
                   </a>
                 </div>
+              </div>
+              
+              {/* Iframe Container */}
+              <div className="relative bg-gray-100" style={{ minHeight: '500px' }}>
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                    <div className="text-center">
+                      <Loader size={40} className="animate-spin text-blue-500 mx-auto mb-3" />
+                      <p className="text-gray-600">Зареждане на файла...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {error && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                    <div className="text-center p-6">
+                      <AlertCircle size={48} className="text-orange-500 mx-auto mb-3" />
+                      <p className="text-gray-700 mb-4">{error}</p>
+                      <a
+                        href={file.driveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <ExternalLink size={16} className="mr-2" />
+                        Отвори в Google Drive
+                      </a>
+                    </div>
+                  </div>
+                )}
+                
+                <iframe
+                  src={embedUrl}
+                  className="w-full border-0"
+                  style={{ height: '600px' }}
+                  onLoad={handleIframeLoad}
+                  onError={handleIframeError}
+                  allow="autoplay"
+                  allowFullScreen
+                  title={file.title}
+                />
+              </div>
+            </div>
+          ) : (
+            /* Fallback when can't preview */
+            <div className="border border-gray-200 rounded-lg p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {getFileIcon()}
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">
+                  Този файл не може да бъде визуализиран
+                </h4>
+                <p className="text-gray-600 mb-4">
+                  Моля, отворете файла в Google Drive за да го прегледате.
+                </p>
+                <a
+                  href={file.driveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <ExternalLink size={16} className="mr-2" />
+                  Отвори в Google Drive
+                </a>
               </div>
             </div>
           )}
@@ -150,10 +352,20 @@ const StudentFileViewer = ({
               </button>
             )}
             
+            <a
+              href={file.driveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            >
+              <ExternalLink size={16} className="mr-2" />
+              Отвори в нов таб
+            </a>
+            
             {isCompleted && (
-              <div className="flex items-center text-green-600 font-medium">
+              <div className="flex items-center text-green-600 font-medium ml-auto">
                 <CheckCircle size={16} className="mr-2" />
-                Този файл е маркиран като прегледан
+                Прегледано
               </div>
             )}
           </div>
@@ -162,25 +374,37 @@ const StudentFileViewer = ({
 
       {/* Collapsed state - quick action */}
       {!expanded && (
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <button
-              onClick={handleOpenFile}
+              onClick={() => setExpanded(true)}
               className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
             >
-              <ExternalLink size={16} className="mr-2" />
-              Отвори в Google Drive
+              <Eye size={16} className="mr-2" />
+              Прегледай файла
             </button>
             
-            {!isCompleted && onMarkComplete && (
-              <button
-                onClick={onMarkComplete}
-                className="flex items-center text-green-600 hover:text-green-700 font-medium"
+            <div className="flex items-center space-x-3">
+              <a
+                href={file.driveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-gray-600 hover:text-gray-700"
               >
-                <CheckCircle size={16} className="mr-2" />
-                Маркирай
-              </button>
-            )}
+                <ExternalLink size={16} className="mr-1" />
+                <span className="hidden sm:inline">Нов таб</span>
+              </a>
+              
+              {!isCompleted && onMarkComplete && (
+                <button
+                  onClick={onMarkComplete}
+                  className="flex items-center text-green-600 hover:text-green-700 font-medium"
+                >
+                  <CheckCircle size={16} className="mr-2" />
+                  Маркирай
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
