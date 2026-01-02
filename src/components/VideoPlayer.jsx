@@ -417,17 +417,14 @@ const YouTubePlayer = ({
   onVideoProgress,
   onMarkUncompleted,
 }) => {
-  const playerRef = useRef(null);
-  const [player, setPlayer] = useState(null);
+  const containerRef = useRef(null);
+  const playerInstanceRef = useRef(null);
   const [watchProgress, setWatchProgress] = useState(0);
   const [hasTriggeredCompletion, setHasTriggeredCompletion] = useState(false);
   const [showCompletionNotification, setShowCompletionNotification] =
     useState(false);
   const progressIntervalRef = useRef(null);
-
-  useEffect(() => {
-    setHasTriggeredCompletion(isCompleted);
-  }, [isCompleted]);
+  const hasTriggeredRef = useRef(false);
 
   // Извличаме YouTube Video ID
   const getYouTubeVideoId = (url) => {
@@ -442,35 +439,139 @@ const YouTubePlayer = ({
 
   const videoId = getYouTubeVideoId(videoUrl);
 
+  // Синхронизираме ref с state за completion
   useEffect(() => {
-    // Чакаме YouTube API да се зареди
-    const initPlayer = () => {
-      if (window.YT && window.YT.Player) {
-        const ytPlayer = new window.YT.Player(playerRef.current, {
-          videoId: videoId,
-          playerVars: {
-            autoplay: 0,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0,
-          },
-          events: {
-            onReady: (event) => {
-              setPlayer(event.target);
-              console.log("✅ YouTube Player ready");
-            },
-            onStateChange: (event) => {
-              // 1 = playing
-              if (event.data === 1) {
-                startProgressTracking(event.target);
-              } else {
-                stopProgressTracking();
+    hasTriggeredRef.current = isCompleted;
+    setHasTriggeredCompletion(isCompleted);
+  }, [isCompleted]);
+
+  // Reset при смяна на видео
+  useEffect(() => {
+    setWatchProgress(0);
+    if (!isCompleted) {
+      setHasTriggeredCompletion(false);
+      hasTriggeredRef.current = false;
+    }
+  }, [videoId, isCompleted]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const stopProgressTracking = () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+
+    const startProgressTracking = (ytPlayer) => {
+      stopProgressTracking();
+
+      progressIntervalRef.current = setInterval(() => {
+        if (!isMounted) return;
+        
+        if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && typeof ytPlayer.getDuration === 'function') {
+          try {
+            const currentTime = ytPlayer.getCurrentTime();
+            const duration = ytPlayer.getDuration();
+
+            if (duration > 0) {
+              const progress = (currentTime / duration) * 100;
+              setWatchProgress(progress);
+
+              if (onVideoProgress) {
+                onVideoProgress(currentTime, duration, progress);
               }
+
+              // Използваме ref за по-надеждна проверка
+              if (progress >= 90 && !hasTriggeredRef.current) {
+                console.log(
+                  `📹 YouTube видео достигна ${Math.round(progress)}% - автоматично маркиране`
+                );
+                hasTriggeredRef.current = true;
+                setHasTriggeredCompletion(true);
+                setShowCompletionNotification(true);
+
+                if (onVideoCompleted) {
+                  onVideoCompleted();
+                }
+
+                setTimeout(() => {
+                  if (isMounted) {
+                    setShowCompletionNotification(false);
+                  }
+                }, 3000);
+              }
+            }
+          } catch (e) {
+            // Player might be destroyed
+            stopProgressTracking();
+          }
+        }
+      }, 1000);
+    };
+
+    // Cleanup предишен плейър
+    if (playerInstanceRef.current) {
+      try {
+        playerInstanceRef.current.destroy();
+      } catch (e) {
+        console.log('Player already destroyed');
+      }
+      playerInstanceRef.current = null;
+    }
+
+    // Изчистваме контейнера и създаваме нов div за плейъра
+    if (containerRef.current) {
+      containerRef.current.innerHTML = '';
+      const playerDiv = document.createElement('div');
+      playerDiv.id = `youtube-player-${videoId}`;
+      playerDiv.style.position = 'absolute';
+      playerDiv.style.top = '0';
+      playerDiv.style.left = '0';
+      playerDiv.style.width = '100%';
+      playerDiv.style.height = '100%';
+      containerRef.current.appendChild(playerDiv);
+    }
+
+    const initPlayer = () => {
+      if (!isMounted || !containerRef.current) return;
+
+      if (window.YT && window.YT.Player) {
+        const playerElement = containerRef.current.querySelector('div');
+        if (!playerElement) return;
+
+        try {
+          const ytPlayer = new window.YT.Player(playerElement, {
+            videoId: videoId,
+            playerVars: {
+              autoplay: 0,
+              controls: 1,
+              modestbranding: 1,
+              rel: 0,
             },
-          },
-        });
+            events: {
+              onReady: (event) => {
+                if (isMounted) {
+                  playerInstanceRef.current = event.target;
+                  console.log("✅ YouTube Player ready for video:", videoId);
+                }
+              },
+              onStateChange: (event) => {
+                if (!isMounted) return;
+                // 1 = playing
+                if (event.data === 1) {
+                  startProgressTracking(event.target);
+                } else {
+                  stopProgressTracking();
+                }
+              },
+            },
+          });
+        } catch (e) {
+          console.error('Error creating YouTube player:', e);
+        }
       } else {
-        // Ако API не е готов, опитваме отново след 100ms
         setTimeout(initPlayer, 100);
       }
     };
@@ -478,66 +579,22 @@ const YouTubePlayer = ({
     initPlayer();
 
     return () => {
+      isMounted = false;
       stopProgressTracking();
-      if (player) {
-        player.destroy();
+      if (playerInstanceRef.current) {
+        try {
+          playerInstanceRef.current.destroy();
+        } catch (e) {
+          // Ignore
+        }
+        playerInstanceRef.current = null;
       }
     };
-  }, [videoId]);
-
-  const startProgressTracking = (ytPlayer) => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-
-    progressIntervalRef.current = setInterval(() => {
-      if (ytPlayer && ytPlayer.getCurrentTime && ytPlayer.getDuration) {
-        const currentTime = ytPlayer.getCurrentTime();
-        const duration = ytPlayer.getDuration();
-
-        if (duration > 0) {
-          const progress = (currentTime / duration) * 100;
-          setWatchProgress(progress);
-
-          // Извикваме callback за прогрес
-          if (onVideoProgress) {
-            onVideoProgress(currentTime, duration, progress);
-          }
-
-          // Проверяваме за автоматично маркиране при 90%
-          if (progress >= 90 && !hasTriggeredCompletion && !isCompleted) {
-            console.log(
-              `📹 YouTube видео достигна ${Math.round(
-                progress
-              )}% - автоматично маркиране`
-            );
-            setHasTriggeredCompletion(true);
-            setShowCompletionNotification(true);
-
-            if (onVideoCompleted) {
-              onVideoCompleted();
-            }
-
-            setTimeout(() => {
-              setShowCompletionNotification(false);
-            }, 3000);
-          }
-
-          console.log(`📊 YouTube Progress: ${Math.round(progress)}%`);
-        }
-      }
-    }, 1000); // Проверяваме всяка секунда
-  };
-
-  const stopProgressTracking = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-  };
+  }, [videoId, onVideoCompleted, onVideoProgress]);
 
   const handleMarkUncompleted = () => {
     if (onMarkUncompleted) {
+      hasTriggeredRef.current = false;
       setHasTriggeredCompletion(false);
       onMarkUncompleted();
     }
@@ -572,7 +629,7 @@ const YouTubePlayer = ({
       <div className="relative">
         <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
           <div
-            ref={playerRef}
+            ref={containerRef}
             className="absolute top-0 left-0 w-full h-full"
           />
         </div>

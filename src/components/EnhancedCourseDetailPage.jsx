@@ -333,15 +333,15 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  const markAssignmentAsCompleted = async (assignmentId) => {
+  const markFileAsCompleted = async (fileId) => {
     try {
-      console.log(`✅ Маркиране на задача като завършена: ${assignmentId}`);
+      console.log(`✅ Маркиране на файл като прегледан: ${fileId}`);
       
-      const result = await completeVideo(user.email, courseId, assignmentId);
+      const result = await completeVideo(user.email, courseId, fileId);
       
       if (result.success) {
         setCompletedContent(prev => {
-          const newSet = new Set([...prev, assignmentId]);
+          const newSet = new Set([...prev, fileId]);
           return newSet;
         });
         
@@ -351,10 +351,10 @@ const EnhancedCourseDetailPage = () => {
           setCourseProgress(progressResult.data);
         }
         
-        console.log(`🎉 Задача успешно маркирана като завършена!`);
+        console.log(`🎉 Файл успешно маркиран като прегледан!`);
       }
     } catch (error) {
-      console.error('❌ Грешка при маркиране на задача:', error);
+      console.error('❌ Грешка при маркиране на файл:', error);
     }
   };
 
@@ -577,7 +577,7 @@ const EnhancedCourseDetailPage = () => {
                 </div>
                 <div className="flex items-center">
                   <FileText size={20} className="mr-2" />
-                  {content.filter(c => c.type === CONTENT_TYPES.ASSIGNMENT).length} задачи
+                  {content.filter(c => c.type === CONTENT_TYPES.FILE).length} файла
                 </div>
                 <div className="flex items-center">
                   <Clock size={20} className="mr-2" />
@@ -766,12 +766,12 @@ const EnhancedCourseDetailPage = () => {
                       </div>
                     )}
 
-                    {/* Assignment Content */}
-                    {selectedContent.type === CONTENT_TYPES.ASSIGNMENT && (
+                    {/* File Content */}
+                    {selectedContent.type === CONTENT_TYPES.FILE && (
                       <StudentFileViewer
-                        assignment={selectedContent}
+                        file={selectedContent}
                         isCompleted={isContentCompleted(selectedContent)}
-                        onMarkComplete={markAssignmentAsCompleted}
+                        onMarkComplete={() => markFileAsCompleted(selectedContent.id)}
                         showFullContent={true}
                       />
                     )}
@@ -840,7 +840,7 @@ const EnhancedCourseDetailPage = () => {
                               <span className="text-xs text-gray-500">
                                 {item.type === CONTENT_TYPES.VIDEO 
                                   ? `Видео • ${item.duration || '0:00'}`
-                                  : `Задача • ${item.estimatedTime || '30 мин'}`
+                                  : `${item.fileType || 'Файл'}`
                                 }
                               </span>
                               {isContentCompleted(item) && (
@@ -960,9 +960,9 @@ const EnhancedCourseDetailPage = () => {
                         </div>
                         <div>
                           <div className="font-semibold">
-                            {content.filter(c => c.type === CONTENT_TYPES.ASSIGNMENT).length}
+                            {content.filter(c => c.type === CONTENT_TYPES.FILE).length}
                           </div>
-                          <div>Задачи</div>
+                          <div>Файлове</div>
                         </div>
                       </div>
                       <p className="text-green-600 text-xs mb-3">
