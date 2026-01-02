@@ -16,7 +16,9 @@ import {
   BookOpen,
   Video,
   Move3D,
-  FolderOpen
+  FolderOpen,
+  Music,
+  Upload
 } from 'lucide-react';
 import {
   getAllCourses,
@@ -31,6 +33,7 @@ import {
 } from '../firebase/courses';
 import FileManagement from './FileManagement';
 import ContentOrderManager from './ContentOrderManager';
+import AudioUploader from './AudioUploader';
 
 const EnhancedCourseManagement = ({ adminEmail }) => {
   const [courses, setCourses] = useState([]);
@@ -230,6 +233,7 @@ const EnhancedCourseCard = ({
   const content = course.content || [];
   const videos = content.filter(item => item.type === CONTENT_TYPES.VIDEO);
   const files = content.filter(item => item.type === CONTENT_TYPES.FILE);
+  const audios = content.filter(item => item.type === CONTENT_TYPES.AUDIO);
 
   const stats = getCourseContentStats(content);
 
@@ -557,8 +561,12 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
     // За файлове
     fileName: '',
     fileType: '',
-    driveUrl: ''
+    driveUrl: '',
+    // За аудио
+    audioUrl: '',
+    audioPath: ''
   });
+  const [audioUploaded, setAudioUploaded] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -581,6 +589,13 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
         duration: formData.duration,
         category: formData.category
       };
+    } else if (contentType === CONTENT_TYPES.AUDIO) {
+      return {
+        audioUrl: formData.audioUrl,
+        audioPath: formData.audioPath,
+        description: formData.description,
+        duration: formData.duration
+      };
     } else {
       return {
         fileName: formData.fileName || formData.title,
@@ -591,7 +606,33 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
     }
   };
 
+  const handleAudioUploadComplete = (result) => {
+    if (result) {
+      setFormData({
+        ...formData, 
+        audioUrl: result.url,
+        audioPath: result.path
+      });
+      setAudioUploaded(true);
+    } else {
+      setFormData({
+        ...formData, 
+        audioUrl: '',
+        audioPath: ''
+      });
+      setAudioUploaded(false);
+    }
+  };
+
   const fileTypeSuggestions = Object.values(FILE_TYPES);
+
+  const isFormValid = () => {
+    if (!formData.title) return false;
+    if (contentType === CONTENT_TYPES.VIDEO && !formData.url) return false;
+    if (contentType === CONTENT_TYPES.FILE && !formData.driveUrl) return false;
+    if (contentType === CONTENT_TYPES.AUDIO && !formData.audioUrl) return false;
+    return true;
+  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
@@ -603,8 +644,8 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Тип съдържание
           </label>
-          <div className="flex space-x-4">
-            <label className="flex items-center">
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
                 value={CONTENT_TYPES.VIDEO}
@@ -612,10 +653,21 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
                 onChange={(e) => setContentType(e.target.value)}
                 className="mr-2"
               />
-              <Video size={16} className="mr-1" />
+              <Video size={16} className="mr-1 text-blue-500" />
               Видео
             </label>
-            <label className="flex items-center">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                value={CONTENT_TYPES.AUDIO}
+                checked={contentType === CONTENT_TYPES.AUDIO}
+                onChange={(e) => setContentType(e.target.value)}
+                className="mr-2"
+              />
+              <Music size={16} className="mr-1 text-green-500" />
+              Аудио
+            </label>
+            <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
                 value={CONTENT_TYPES.FILE}
@@ -623,7 +675,7 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
                 onChange={(e) => setContentType(e.target.value)}
                 className="mr-2"
               />
-              <FileText size={16} className="mr-1" />
+              <FileText size={16} className="mr-1 text-orange-500" />
               Файл
             </label>
           </div>
@@ -659,7 +711,10 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
         {/* Video-specific fields */}
         {contentType === CONTENT_TYPES.VIDEO && (
           <div className="space-y-4 border-t pt-4">
-            <h5 className="font-medium text-gray-800">Настройки за видео</h5>
+            <h5 className="font-medium text-gray-800 flex items-center">
+              <Video size={18} className="mr-2 text-blue-500" />
+              Настройки за видео
+            </h5>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -701,10 +756,62 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
           </div>
         )}
 
+        {/* Audio-specific fields */}
+        {contentType === CONTENT_TYPES.AUDIO && (
+          <div className="space-y-4 border-t pt-4">
+            <h5 className="font-medium text-gray-800 flex items-center">
+              <Music size={18} className="mr-2 text-green-500" />
+              Настройки за аудио
+            </h5>
+            
+            {/* Audio Uploader */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Аудио файл *
+              </label>
+              <AudioUploader
+                courseId={courseId}
+                onUploadComplete={handleAudioUploadComplete}
+                existingUrl={formData.audioUrl}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Продължителност
+                </label>
+                <input
+                  type="text"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="5:30"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Описание
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="2"
+              />
+            </div>
+          </div>
+        )}
+
         {/* File-specific fields */}
         {contentType === CONTENT_TYPES.FILE && (
           <div className="space-y-4 border-t pt-4">
-            <h5 className="font-medium text-gray-800">Настройки за файл</h5>
+            <h5 className="font-medium text-gray-800 flex items-center">
+              <FileText size={18} className="mr-2 text-orange-500" />
+              Настройки за файл
+            </h5>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -771,7 +878,7 @@ const AddContentForm = ({ courseId, onSubmit, onCancel, contentCount }) => {
         <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
           <button
             type="submit"
-            disabled={!formData.title || (contentType === CONTENT_TYPES.VIDEO && !formData.url) || (contentType === CONTENT_TYPES.FILE && !formData.driveUrl)}
+            disabled={!isFormValid()}
             className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             <Plus size={16} className="mr-2" />

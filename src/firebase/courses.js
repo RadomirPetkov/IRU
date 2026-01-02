@@ -16,7 +16,8 @@ import { db } from "./firestore";
 // Типове съдържание
 export const CONTENT_TYPES = {
   VIDEO: 'video',
-  FILE: 'file'
+  FILE: 'file',
+  AUDIO: 'audio'
 };
 
 // Типове файлове (свободно добавяне)
@@ -342,6 +343,15 @@ const getContentSpecificFields = (contentData) => {
     };
   }
 
+  if (type === CONTENT_TYPES.AUDIO) {
+    return {
+      audioUrl: contentData.audioUrl,
+      audioPath: contentData.audioPath || '',
+      description: contentData.description || '',
+      duration: contentData.duration || '0:00'
+    };
+  }
+
   if (type === CONTENT_TYPES.FILE) {
     return {
       fileName: contentData.fileName || contentData.title,
@@ -382,19 +392,45 @@ export const validateFileData = (fileData) => {
  * Получаване на статистики за съдържанието на курс
  */
 export const getCourseContentStats = (courseContent) => {
-  if (!Array.isArray(courseContent)) return { videos: 0, files: 0, total: 0 };
+  if (!Array.isArray(courseContent)) return { videos: 0, files: 0, audios: 0, total: 0 };
 
   const stats = courseContent.reduce((acc, content) => {
     if (content.type === CONTENT_TYPES.VIDEO) {
       acc.videos++;
     } else if (content.type === CONTENT_TYPES.FILE) {
       acc.files++;
+    } else if (content.type === CONTENT_TYPES.AUDIO) {
+      acc.audios++;
     }
     acc.total++;
     return acc;
-  }, { videos: 0, files: 0, total: 0 });
+  }, { videos: 0, files: 0, audios: 0, total: 0 });
 
   return stats;
+};
+
+/**
+ * Валидиране на аудио данни
+ */
+export const validateAudioData = (audioData) => {
+  const { title, audioUrl } = audioData;
+
+  if (!title || title.trim().length === 0) {
+    return { valid: false, error: 'Заглавието е задължително' };
+  }
+
+  if (!audioUrl || audioUrl.trim().length === 0) {
+    return { valid: false, error: 'URL на аудио файла е задължителен' };
+  }
+
+  // Проверка за валиден URL
+  try {
+    new URL(audioUrl);
+  } catch {
+    return { valid: false, error: 'Невалиден URL' };
+  }
+
+  return { valid: true };
 };
 
 // ============= ПОМОЩНИ ФУНКЦИИ =============

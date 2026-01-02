@@ -1,5 +1,6 @@
 // src/firebase/firestore.js - Production готова версия с функция за премахване на завършването и нормализация на имейли
 import { initializeApp } from "firebase/app";
+import { getStorage } from "firebase/storage";
 import {
   getFirestore,
   doc,
@@ -37,6 +38,10 @@ if (!process.env.REACT_APP_FIREBASE_PROJECT_ID) {
 // Инициализиране на Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+// Експортиране на app за използване в други модули
+export { app };
 
 // 🆕 Helper функция за нормализация на имейли
 const normalizeEmail = (email) => {

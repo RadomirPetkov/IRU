@@ -26,7 +26,9 @@ import {
   X,
   Undo,
   Database,
-  WifiOff
+  WifiOff,
+  Volume2,
+  Music
 } from 'lucide-react';
 import { getCourseById, reloadCourses } from '../data/coursesData';
 import { CONTENT_TYPES } from '../firebase/courses';
@@ -206,10 +208,16 @@ const EnhancedCourseDetailPage = () => {
     const selectedContent = content[index];
     
     console.log(`🎬 Избиране на съдържание ${index + 1}: ${selectedContent.title}`);
+    console.log('📋 Съдържание данни:', selectedContent);
+    
+    if (selectedContent.type === CONTENT_TYPES.AUDIO) {
+      console.log('🎵 Аудио URL:', selectedContent.audioUrl || selectedContent.url || 'НЕ Е НАМЕРЕН');
+    }
+    
     setSelectedContentIndex(index);
 
-    // Ако е видео, регистрираме го като стартирано
-    if (selectedContent.type === CONTENT_TYPES.VIDEO && user?.email) {
+    // Ако е видео или аудио, регистрираме го като стартирано
+    if ((selectedContent.type === CONTENT_TYPES.VIDEO || selectedContent.type === CONTENT_TYPES.AUDIO) && user?.email) {
       handleVideoStart(selectedContent);
     }
   };
@@ -579,6 +587,12 @@ const EnhancedCourseDetailPage = () => {
                   <FileText size={20} className="mr-2" />
                   {content.filter(c => c.type === CONTENT_TYPES.FILE).length} файла
                 </div>
+                {content.filter(c => c.type === CONTENT_TYPES.AUDIO).length > 0 && (
+                  <div className="flex items-center">
+                    <Volume2 size={20} className="mr-2" />
+                    {content.filter(c => c.type === CONTENT_TYPES.AUDIO).length} аудио
+                  </div>
+                )}
                 <div className="flex items-center">
                   <Clock size={20} className="mr-2" />
                   {course.estimatedHours || 1} часа
@@ -775,6 +789,18 @@ const EnhancedCourseDetailPage = () => {
                         showFullContent={true}
                       />
                     )}
+
+                    {/* Audio Content */}
+                    {selectedContent.type === CONTENT_TYPES.AUDIO && (
+                      <VideoPlayer
+                        videoUrl={selectedContent.audioUrl || selectedContent.url}
+                        title={selectedContent.title}
+                        isCompleted={isContentCompleted(selectedContent)}
+                        onVideoCompleted={handleVideoCompleted}
+                        onVideoProgress={handleVideoProgress}
+                        onMarkUncompleted={() => handleMarkVideoUncompleted(selectedContent.id)}
+                      />
+                    )}
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl shadow-lg p-8 text-center">
@@ -818,13 +844,19 @@ const EnhancedCourseDetailPage = () => {
                             isContentCompleted(item) 
                               ? 'bg-green-500 text-white shadow-md' 
                               : selectedContentIndex === index
-                                ? item.type === CONTENT_TYPES.VIDEO ? 'bg-blue-500 text-white shadow-md' : 'bg-green-500 text-white shadow-md'
+                                ? item.type === CONTENT_TYPES.VIDEO 
+                                  ? 'bg-blue-500 text-white shadow-md' 
+                                  : item.type === CONTENT_TYPES.AUDIO
+                                    ? 'bg-teal-500 text-white shadow-md'
+                                    : 'bg-orange-500 text-white shadow-md'
                                 : 'bg-gray-200 text-gray-600'
                           }`}>
                             {isContentCompleted(item) ? (
                               <CheckCircle size={16} />
                             ) : item.type === CONTENT_TYPES.VIDEO ? (
                               <Play size={16} />
+                            ) : item.type === CONTENT_TYPES.AUDIO ? (
+                              <Music size={16} />
                             ) : (
                               <FileText size={16} />
                             )}
@@ -840,7 +872,9 @@ const EnhancedCourseDetailPage = () => {
                               <span className="text-xs text-gray-500">
                                 {item.type === CONTENT_TYPES.VIDEO 
                                   ? `Видео • ${item.duration || '0:00'}`
-                                  : `${item.fileType || 'Файл'}`
+                                  : item.type === CONTENT_TYPES.AUDIO
+                                    ? `Аудио • ${item.duration || '0:00'}`
+                                    : `${item.fileType || 'Файл'}`
                                 }
                               </span>
                               {isContentCompleted(item) && (
@@ -848,7 +882,7 @@ const EnhancedCourseDetailPage = () => {
                                   <span className="text-xs text-green-600 font-medium">
                                     Готово ✓
                                   </span>
-                                  {item.type === CONTENT_TYPES.VIDEO && (
+                                  {(item.type === CONTENT_TYPES.VIDEO || item.type === CONTENT_TYPES.AUDIO) && (
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
