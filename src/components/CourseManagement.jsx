@@ -978,7 +978,7 @@ const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCoun
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex items-center justify-between">
           <h4 className="text-xl font-semibold text-white flex items-center">
@@ -994,7 +994,7 @@ const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCoun
         </div>
         
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(95vh-80px)]">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Content Type Selection */}
             <div>
