@@ -796,16 +796,16 @@ const ContentList = ({ content, courseId, topics = [], adminEmail, onUpdate }) =
                       {getTypeName(item.type)}
                       {item.fileType && ` • ${item.fileType}`}
                     </span>
-                    {item.duration && (
-                      <span className="flex items-center">
-                        <Clock size={12} className="mr-1" />
-                        {item.duration}
-                      </span>
-                    )}
                     <span>Позиция {item.order}</span>
-                    {item.topicId && topics.find(t => t.id === item.topicId) && (
-                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                    {item.topicId && topics.find(t => t.id === item.topicId) ? (
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs flex items-center">
+                        <BookOpen size={10} className="mr-1" />
                         {topics.find(t => t.id === item.topicId)?.icon} {topics.find(t => t.id === item.topicId)?.title}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs flex items-center">
+                        <FolderOpen size={10} className="mr-1" />
+                        Без тема
                       </span>
                     )}
                   </div>
@@ -886,7 +886,7 @@ const VideoList = ({ videos, courseId, adminEmail, onUpdate }) => {
   );
 };
 
-// Формуляр за добавяне на съдържание
+// Формуляр за добавяне на съдържание (Модален прозорец)
 const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCount }) => {
   const [contentType, setContentType] = useState(CONTENT_TYPES.VIDEO);
   const [formData, setFormData] = useState({
@@ -948,11 +948,12 @@ const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCoun
   };
 
   const handleAudioUploadComplete = (result) => {
-    if (result) {
+    if (result.success) {
       setFormData({
-        ...formData, 
+        ...formData,
         audioUrl: result.url,
-        audioPath: result.path
+        audioPath: result.path,
+        title: formData.title || result.fileName.replace(/\.[^/.]+$/, '')
       });
       setAudioUploaded(true);
     } else {
@@ -976,285 +977,295 @@ const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCoun
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
-      <h4 className="font-semibold text-gray-800 mb-4">Добави ново съдържание</h4>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Content Type Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Тип съдържание
-          </label>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="radio"
-                value={CONTENT_TYPES.VIDEO}
-                checked={contentType === CONTENT_TYPES.VIDEO}
-                onChange={(e) => setContentType(e.target.value)}
-                className="mr-2"
-              />
-              <Video size={16} className="mr-1 text-blue-500" />
-              Видео
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="radio"
-                value={CONTENT_TYPES.AUDIO}
-                checked={contentType === CONTENT_TYPES.AUDIO}
-                onChange={(e) => setContentType(e.target.value)}
-                className="mr-2"
-              />
-              <Music size={16} className="mr-1 text-green-500" />
-              Аудио
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="radio"
-                value={CONTENT_TYPES.FILE}
-                checked={contentType === CONTENT_TYPES.FILE}
-                onChange={(e) => setContentType(e.target.value)}
-                className="mr-2"
-              />
-              <FileText size={16} className="mr-1 text-orange-500" />
-              Файл
-            </label>
-          </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex items-center justify-between">
+          <h4 className="text-xl font-semibold text-white flex items-center">
+            <Plus size={24} className="mr-2" />
+            Добави ново съдържание
+          </h4>
+          <button
+            onClick={onCancel}
+            className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+          >
+            <X size={24} />
+          </button>
         </div>
+        
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Content Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Тип съдържание
+              </label>
+              <div className="flex flex-wrap gap-4">
+                <label className={`flex items-center cursor-pointer px-4 py-2 rounded-lg border-2 transition-all ${
+                  contentType === CONTENT_TYPES.VIDEO 
+                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    value={CONTENT_TYPES.VIDEO}
+                    checked={contentType === CONTENT_TYPES.VIDEO}
+                    onChange={(e) => setContentType(e.target.value)}
+                    className="sr-only"
+                  />
+                  <Video size={18} className="mr-2 text-blue-500" />
+                  Видео
+                </label>
+                <label className={`flex items-center cursor-pointer px-4 py-2 rounded-lg border-2 transition-all ${
+                  contentType === CONTENT_TYPES.AUDIO 
+                    ? 'border-teal-500 bg-teal-50 text-teal-700' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    value={CONTENT_TYPES.AUDIO}
+                    checked={contentType === CONTENT_TYPES.AUDIO}
+                    onChange={(e) => setContentType(e.target.value)}
+                    className="sr-only"
+                  />
+                  <Music size={18} className="mr-2 text-teal-500" />
+                  Аудио
+                </label>
+                <label className={`flex items-center cursor-pointer px-4 py-2 rounded-lg border-2 transition-all ${
+                  contentType === CONTENT_TYPES.FILE 
+                    ? 'border-orange-500 bg-orange-50 text-orange-700' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    value={CONTENT_TYPES.FILE}
+                    checked={contentType === CONTENT_TYPES.FILE}
+                    onChange={(e) => setContentType(e.target.value)}
+                    className="sr-only"
+                  />
+                  <FileText size={18} className="mr-2 text-orange-500" />
+                  Файл
+                </label>
+              </div>
+            </div>
 
-        {/* Common Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Заглавие *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Тема
-            </label>
-            <select
-              value={formData.topicId}
-              onChange={(e) => setFormData({...formData, topicId: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Без тема</option>
-              {topics.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.icon} {topic.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Позиция
-            </label>
-            <input
-              type="number"
-              value={formData.order}
-              onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
-        {/* Video-specific fields */}
-        {contentType === CONTENT_TYPES.VIDEO && (
-          <div className="space-y-4 border-t pt-4">
-            <h5 className="font-medium text-gray-800 flex items-center">
-              <Video size={18} className="mr-2 text-blue-500" />
-              Настройки за видео
-            </h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Common Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL на видеото *
+                  Заглавие *
                 </label>
                 <input
-                  type="url"
-                  value={formData.url}
-                  onChange={(e) => setFormData({...formData, url: e.target.value})}
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder="Въведете заглавие"
                   required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Продължителност
+                  Тема
                 </label>
-                <input
-                  type="text"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                <select
+                  value={formData.topicId}
+                  onChange={(e) => setFormData({...formData, topicId: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="15:30"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="3"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Audio-specific fields */}
-        {contentType === CONTENT_TYPES.AUDIO && (
-          <div className="space-y-4 border-t pt-4">
-            <h5 className="font-medium text-gray-800 flex items-center">
-              <Music size={18} className="mr-2 text-green-500" />
-              Настройки за аудио
-            </h5>
-            
-            {/* Audio Uploader */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Аудио файл *
-              </label>
-              <AudioUploader
-                courseId={courseId}
-                onUploadComplete={handleAudioUploadComplete}
-                existingUrl={formData.audioUrl}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Продължителност
-                </label>
-                <input
-                  type="text"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="5:30"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="2"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* File-specific fields */}
-        {contentType === CONTENT_TYPES.FILE && (
-          <div className="space-y-4 border-t pt-4">
-            <h5 className="font-medium text-gray-800 flex items-center">
-              <FileText size={18} className="mr-2 text-orange-500" />
-              Настройки за файл
-            </h5>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Име на файла
-                </label>
-                <input
-                  type="text"
-                  value={formData.fileName}
-                  onChange={(e) => setFormData({...formData, fileName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="По подразбиране = заглавие"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Тип на файла
-                </label>
-                <input
-                  type="text"
-                  value={formData.fileType}
-                  onChange={(e) => setFormData({...formData, fileType: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Лекция, Програма, Задача..."
-                  list="fileTypeSuggestions"
-                />
-                <datalist id="fileTypeSuggestions">
-                  {fileTypeSuggestions.map((type) => (
-                    <option key={type} value={type} />
+                >
+                  <option value="">Без тема</option>
+                  {topics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.icon} {topic.title}
+                    </option>
                   ))}
-                </datalist>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Позиция
+                </label>
+                <input
+                  type="number"
+                  value={formData.order}
+                  onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                />
               </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Google Drive URL *
-              </label>
-              <input
-                type="url"
-                value={formData.driveUrl}
-                onChange={(e) => setFormData({...formData, driveUrl: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://drive.google.com/file/d/..."
-                required
-              />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="2"
-              />
-            </div>
-          </div>
-        )}
+            {/* Video-specific fields */}
+            {contentType === CONTENT_TYPES.VIDEO && (
+              <div className="space-y-4 border-t pt-4">
+                <h5 className="font-medium text-gray-800 flex items-center">
+                  <Video size={18} className="mr-2 text-blue-500" />
+                  Настройки за видео
+                </h5>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    URL на видеото *
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.url}
+                    onChange={(e) => setFormData({...formData, url: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://youtube.com/watch?v=..."
+                    required
+                  />
+                </div>
 
-        {/* Submit Buttons */}
-        <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
-          <button
-            type="submit"
-            disabled={!isFormValid()}
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-          >
-            <Plus size={16} className="mr-2" />
-            Добави съдържание
-          </button>
-          
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Отказ
-          </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Описание
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="2"
+                    placeholder="Кратко описание на видеото..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Audio-specific fields */}
+            {contentType === CONTENT_TYPES.AUDIO && (
+              <div className="space-y-4 border-t pt-4">
+                <h5 className="font-medium text-gray-800 flex items-center">
+                  <Music size={18} className="mr-2 text-teal-500" />
+                  Настройки за аудио
+                </h5>
+                
+                <AudioUploader
+                  courseId={courseId}
+                  onUploadComplete={handleAudioUploadComplete}
+                />
+                
+                {audioUploaded && (
+                  <div className="flex items-center text-green-600 bg-green-50 p-3 rounded-lg">
+                    <CheckCircle size={16} className="mr-2" />
+                    Аудио файлът е качен успешно
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Описание
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="2"
+                    placeholder="Кратко описание на аудиото..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* File-specific fields */}
+            {contentType === CONTENT_TYPES.FILE && (
+              <div className="space-y-4 border-t pt-4">
+                <h5 className="font-medium text-gray-800 flex items-center">
+                  <FileText size={18} className="mr-2 text-orange-500" />
+                  Настройки за файл
+                </h5>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Име на файла
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.fileName}
+                      onChange={(e) => setFormData({...formData, fileName: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="По подразбиране = заглавие"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Тип на файла
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.fileType}
+                      onChange={(e) => setFormData({...formData, fileType: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Лекция, Програма, Задача..."
+                      list="fileTypeSuggestions"
+                    />
+                    <datalist id="fileTypeSuggestions">
+                      {fileTypeSuggestions.map((type) => (
+                        <option key={type} value={type} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Google Drive URL *
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.driveUrl}
+                    onChange={(e) => setFormData({...formData, driveUrl: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://drive.google.com/file/d/..."
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Файлът трябва да е споделен като "Всеки с връзката може да вижда"
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Описание
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="2"
+                    placeholder="Кратко описание на файла..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Submit Buttons */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Отказ
+              </button>
+              <button
+                type="submit"
+                disabled={!isFormValid()}
+                className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+              >
+                <Plus size={16} className="mr-2" />
+                Добави
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 };
+
 
 // Модал за създаване на курс
 const CreateCourseModal = ({ onClose, onSubmit, existingCourses }) => {
