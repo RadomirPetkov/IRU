@@ -396,6 +396,7 @@ const EnhancedCourseCard = ({
             <ContentList 
               content={content}
               courseId={course.id}
+              topics={course.topics || []}
               adminEmail={adminEmail}
               onUpdate={onUpdate}
             />
@@ -446,7 +447,11 @@ const EnhancedCourseCard = ({
 };
 
 // Компонент за показване на смесено съдържание
-const ContentList = ({ content, courseId, adminEmail, onUpdate }) => {
+const ContentList = ({ content, courseId, topics = [], adminEmail, onUpdate }) => {
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
+
   if (content.length === 0) {
     return (
       <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -474,50 +479,360 @@ const ContentList = ({ content, courseId, adminEmail, onUpdate }) => {
     }
   };
 
+  const startEdit = (item) => {
+    setEditingItem(item.id);
+    setEditForm({
+      title: item.title || '',
+      description: item.description || '',
+      duration: item.duration || '',
+      order: item.order || 1,
+      topicId: item.topicId || '',
+      // За видеа
+      url: item.url || '',
+      category: item.category || 'Видео лекция',
+      // За файлове
+      driveUrl: item.driveUrl || '',
+      fileType: item.fileType || '',
+      fileName: item.fileName || '',
+      // За аудио
+      audioUrl: item.audioUrl || ''
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingItem(null);
+    setEditForm({});
+  };
+
+  const saveEdit = async (itemId, itemType) => {
+    setSaving(true);
+    try {
+      const updateData = {
+        title: editForm.title,
+        description: editForm.description,
+        order: parseInt(editForm.order) || 1,
+        topicId: editForm.topicId || null
+      };
+
+      // Добавяме специфични полета според типа
+      if (itemType === CONTENT_TYPES.VIDEO) {
+        updateData.url = editForm.url;
+        updateData.duration = editForm.duration;
+        updateData.category = editForm.category;
+      } else if (itemType === CONTENT_TYPES.AUDIO) {
+        updateData.audioUrl = editForm.audioUrl;
+        updateData.duration = editForm.duration;
+      } else if (itemType === CONTENT_TYPES.FILE) {
+        updateData.driveUrl = editForm.driveUrl;
+        updateData.fileType = editForm.fileType;
+        updateData.fileName = editForm.fileName || editForm.title;
+      }
+
+      const { updateContentInCourse } = await import('../firebase/courses');
+      const result = await updateContentInCourse(courseId, itemId, updateData, adminEmail);
+      
+      if (result.success) {
+        setEditingItem(null);
+        setEditForm({});
+        onUpdate();
+      } else {
+        alert('Грешка при запазване: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Грешка при запазване на промените');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case CONTENT_TYPES.VIDEO:
+        return <Play size={16} />;
+      case CONTENT_TYPES.AUDIO:
+        return <Music size={16} />;
+      case CONTENT_TYPES.FILE:
+        return <FileText size={16} />;
+      default:
+        return <FileText size={16} />;
+    }
+  };
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case CONTENT_TYPES.VIDEO:
+        return 'bg-blue-500';
+      case CONTENT_TYPES.AUDIO:
+        return 'bg-teal-500';
+      case CONTENT_TYPES.FILE:
+        return 'bg-orange-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getTypeName = (type) => {
+    switch (type) {
+      case CONTENT_TYPES.VIDEO:
+        return 'Видео';
+      case CONTENT_TYPES.AUDIO:
+        return 'Аудио';
+      case CONTENT_TYPES.FILE:
+        return 'Файл';
+      default:
+        return 'Съдържание';
+    }
+  };
+
   return (
     <div className="space-y-3">
       {content.map((item, index) => (
         <div
           key={item.id}
-          className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between"
+          className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden"
         >
-          <div className="flex items-center space-x-4 flex-1">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
-              item.type === CONTENT_TYPES.VIDEO ? 'bg-blue-500' : 'bg-green-500'
-            }`}>
-              {item.type === CONTENT_TYPES.VIDEO ? (
-                <Play size={16} />
-              ) : (
-                <FileText size={16} />
-              )}
-            </div>
-            
-            <div className="flex-1">
-              <h5 className="font-medium text-gray-800">{item.title}</h5>
-              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                <span>
-                  {item.type === CONTENT_TYPES.VIDEO ? 'Видео' : item.fileType || 'Файл'}
-                </span>
-                {item.duration && (
-                  <span className="flex items-center">
-                    <Clock size={12} className="mr-1" />
-                    {item.duration}
-                  </span>
+          {editingItem === item.id ? (
+            /* Edit Mode */
+            <div className="p-4 space-y-4 bg-blue-50 border-l-4 border-blue-500">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-blue-800 flex items-center">
+                  <Edit3 size={16} className="mr-2" />
+                  Редактиране на {getTypeName(item.type)}
+                </h4>
+                <button
+                  onClick={cancelEdit}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Заглавие */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Заглавие *
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Тема */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Тема
+                  </label>
+                  <select
+                    value={editForm.topicId}
+                    onChange={(e) => setEditForm({...editForm, topicId: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Без тема</option>
+                    {topics.map((topic) => (
+                      <option key={topic.id} value={topic.id}>
+                        {topic.icon} {topic.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Позиция */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Позиция
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.order}
+                    onChange={(e) => setEditForm({...editForm, order: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                  />
+                </div>
+
+                {/* Продължителност (за видео и аудио) */}
+                {(item.type === CONTENT_TYPES.VIDEO || item.type === CONTENT_TYPES.AUDIO) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Продължителност
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.duration}
+                      onChange={(e) => setEditForm({...editForm, duration: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="напр. 10:30"
+                    />
+                  </div>
                 )}
-                <span>Позиция {item.order}</span>
+
+                {/* URL за видео */}
+                {item.type === CONTENT_TYPES.VIDEO && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      URL на видеото
+                    </label>
+                    <input
+                      type="url"
+                      value={editForm.url}
+                      onChange={(e) => setEditForm({...editForm, url: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://youtube.com/..."
+                    />
+                  </div>
+                )}
+
+                {/* Категория за видео */}
+                {item.type === CONTENT_TYPES.VIDEO && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Категория
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+
+                {/* URL за файл */}
+                {item.type === CONTENT_TYPES.FILE && (
+                  <>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Google Drive URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editForm.driveUrl}
+                        onChange={(e) => setEditForm({...editForm, driveUrl: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://drive.google.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Тип файл
+                      </label>
+                      <select
+                        value={editForm.fileType}
+                        onChange={(e) => setEditForm({...editForm, fileType: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Избери тип</option>
+                        <option value="Лекция">Лекция</option>
+                        <option value="Програма">Програма</option>
+                        <option value="Задача">Задача</option>
+                        <option value="Упражнение">Упражнение</option>
+                        <option value="Материал">Материал</option>
+                        <option value="Презентация">Презентация</option>
+                        <option value="Друго">Друго</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Описание */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Описание
+                  </label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows="2"
+                    placeholder="Кратко описание..."
+                  />
+                </div>
+              </div>
+
+              {/* Бутони за запазване/отказ */}
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  onClick={() => saveEdit(item.id, item.type)}
+                  disabled={saving || !editForm.title}
+                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {saving ? (
+                    <>
+                      <Clock size={16} className="mr-2 animate-spin" />
+                      Запазване...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} className="mr-2" />
+                      Запази промените
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Отказ
+                </button>
               </div>
             </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="text-red-600 hover:bg-red-100 p-2 rounded transition-colors"
-              title="Изтрий"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
+          ) : (
+            /* View Mode */
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-4 flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${getTypeColor(item.type)}`}>
+                  {getTypeIcon(item.type)}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h5 className="font-medium text-gray-800">{item.title}</h5>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
+                    <span className="flex items-center">
+                      {getTypeName(item.type)}
+                      {item.fileType && ` • ${item.fileType}`}
+                    </span>
+                    {item.duration && (
+                      <span className="flex items-center">
+                        <Clock size={12} className="mr-1" />
+                        {item.duration}
+                      </span>
+                    )}
+                    <span>Позиция {item.order}</span>
+                    {item.topicId && topics.find(t => t.id === item.topicId) && (
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                        {topics.find(t => t.id === item.topicId)?.icon} {topics.find(t => t.id === item.topicId)?.title}
+                      </span>
+                    )}
+                  </div>
+                  {item.description && (
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-1">{item.description}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 ml-4">
+                <button
+                  onClick={() => startEdit(item)}
+                  className="text-blue-600 hover:bg-blue-100 p-2 rounded transition-colors"
+                  title="Редактирай"
+                >
+                  <Edit3 size={16} />
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="text-red-600 hover:bg-red-100 p-2 rounded transition-colors"
+                  title="Изтрий"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
