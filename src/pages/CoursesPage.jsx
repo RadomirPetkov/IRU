@@ -7,7 +7,6 @@ import {
   Lock,
   ArrowLeft,
   Play,
-  Clock,
   CheckCircle,
   XCircle,
   Users,
@@ -402,7 +401,7 @@ const CoursesPage = () => {
 
                     {/* Course Content */}
                     <div className="p-6">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center mb-4">
                         <div className="flex items-center text-gray-600">
                           <Play size={16} className="mr-2" />
                           {course.content?.filter((c) => c.type === "video")
@@ -410,10 +409,6 @@ const CoursesPage = () => {
                             course.videos?.length ||
                             0}{" "}
                           видео лекции
-                        </div>
-                        <div className="flex items-center text-gray-600">
-                          <Clock size={16} className="mr-2" />
-                          {course.estimatedHours || 1} часа
                         </div>
                       </div>
 
@@ -434,9 +429,6 @@ const CoursesPage = () => {
                                 {index + 1}
                               </div>
                               <span className="flex-1">{video.title}</span>
-                              <span className="text-xs">
-                                {video.duration || "0:00"}
-                              </span>
                             </div>
                           ))}
                         {(course.videos?.length || 0) > 3 && (

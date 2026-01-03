@@ -595,10 +595,6 @@ const EnhancedCourseDetailPage = () => {
                   </div>
                 )}
                 <div className="flex items-center">
-                  <Clock size={20} className="mr-2" />
-                  {course.estimatedHours || 1} часа
-                </div>
-                <div className="flex items-center">
                   <Award size={20} className="mr-2" />
                   Ниво {course.level}
                 </div>
@@ -634,20 +630,13 @@ const EnhancedCourseDetailPage = () => {
                 </p>
                 
                 {/* Статистики */}
-                <div className="grid grid-cols-2 gap-4 text-center text-sm border-t border-white border-opacity-20 pt-4">
+                <div className="text-center text-sm border-t border-white border-opacity-20 pt-4">
                   <div>
                     <div className="font-semibold flex items-center justify-center">
                       <Target size={16} className="mr-1" />
                       {content.length}
                     </div>
                     <div className="text-white text-opacity-70">Общо елементи</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold flex items-center justify-center">
-                      <Clock size={16} className="mr-1" />
-                      {course.estimatedHours || 1}ч
-                    </div>
-                    <div className="text-white text-opacity-70">Време</div>
                   </div>
                 </div>
                 
@@ -722,10 +711,6 @@ const EnhancedCourseDetailPage = () => {
                                 <span className="flex items-center">
                                   <Video size={16} className="mr-1" />
                                   Видео лекция {selectedContentIndex + 1}
-                                </span>
-                                <span className="flex items-center">
-                                  <Clock size={16} className="mr-1" />
-                                  {selectedContent.duration || '0:00'}
                                 </span>
                                 {videoProgress[selectedContent.id] && (
                                   <span className="flex items-center">

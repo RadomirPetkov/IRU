@@ -8,8 +8,7 @@ import {
   FileText,
   CheckCircle,
   Lock,
-  BookOpen,
-  Clock
+  BookOpen
 } from 'lucide-react';
 import { CONTENT_TYPES } from '../firebase/courses';
 
@@ -138,8 +137,8 @@ const CourseTopicsView = ({
                     {item.title}
                   </h4>
                   <span className="text-xs text-gray-500">
-                    {item.type === CONTENT_TYPES.VIDEO ? `Видео • ${item.duration || '0:00'}` :
-                     item.type === CONTENT_TYPES.AUDIO ? `Аудио • ${item.duration || '0:00'}` :
+                    {item.type === CONTENT_TYPES.VIDEO ? 'Видео' :
+                     item.type === CONTENT_TYPES.AUDIO ? 'Аудио' :
                      item.fileType || 'Файл'}
                   </span>
                 </div>
@@ -258,15 +257,6 @@ const CourseTopicsView = ({
                                item.type === CONTENT_TYPES.AUDIO ? 'Аудио' : 
                                item.fileType || 'Файл'}
                             </span>
-                            {(item.type === CONTENT_TYPES.VIDEO || item.type === CONTENT_TYPES.AUDIO) && item.duration && (
-                              <>
-                                <span className="text-gray-300">•</span>
-                                <span className="text-xs text-gray-500 flex items-center">
-                                  <Clock size={10} className="mr-1" />
-                                  {item.duration}
-                                </span>
-                              </>
-                            )}
                           </div>
                         </div>
 
@@ -350,8 +340,8 @@ const CourseTopicsView = ({
                         {item.title}
                       </h4>
                       <span className="text-xs text-gray-500">
-                        {item.type === CONTENT_TYPES.VIDEO ? `Видео • ${item.duration || '0:00'}` :
-                         item.type === CONTENT_TYPES.AUDIO ? `Аудио • ${item.duration || '0:00'}` :
+                        {item.type === CONTENT_TYPES.VIDEO ? 'Видео' :
+                         item.type === CONTENT_TYPES.AUDIO ? 'Аудио' :
                          item.fileType || 'Файл'}
                       </span>
                     </div>
