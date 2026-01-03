@@ -494,13 +494,6 @@ const VideoPlayer = ({
 
                 <span className="text-sm">({Math.round(watchProgress)}%)</span>
               </div>
-
-              <button
-                onClick={toggleFullscreen}
-                className="hover:text-blue-400 transition-colors"
-              >
-                <Maximize size={20} />
-              </button>
             </div>
           </div>
         )}

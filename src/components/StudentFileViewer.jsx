@@ -7,8 +7,6 @@ import {
   Eye,
   EyeOff,
   FolderOpen,
-  Maximize2,
-  Minimize2,
   AlertCircle,
   Loader,
   Image as ImageIcon,
@@ -24,7 +22,6 @@ const StudentFileViewer = ({
   showFullContent = true 
 }) => {
   const [expanded, setExpanded] = useState(showFullContent);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -112,61 +109,6 @@ const StudentFileViewer = ({
     setError(null);
   }, [file.driveUrl]);
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
-  // Fullscreen overlay
-  if (isFullscreen && embedUrl) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gray-900">
-          <div className="flex items-center space-x-4">
-            <div className="p-2 bg-blue-600 rounded-lg text-white">
-              {getFileIcon()}
-            </div>
-            <div>
-              <h3 className="text-white font-bold text-lg">{file.title}</h3>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getFileTypeColor(file.fileType)}`}>
-                {file.fileType || 'Файл'}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <a
-              href={file.driveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <ExternalLink size={16} className="mr-2" />
-              Отвори в нов таб
-            </a>
-            
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              <Minimize2 size={20} />
-            </button>
-          </div>
-        </div>
-        
-        {/* Iframe */}
-        <div className="flex-1 relative">
-          <iframe
-            src={embedUrl}
-            className="w-full h-full border-0"
-            allow="autoplay"
-            allowFullScreen
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`bg-white border rounded-xl shadow-lg overflow-hidden transition-all duration-300 ${
       isCompleted ? 'border-green-200' : 'border-gray-200 hover:shadow-xl'
@@ -204,16 +146,6 @@ const StudentFileViewer = ({
 
           {/* Controls */}
           <div className="flex items-center space-x-2 flex-shrink-0">
-            {embedUrl && (
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                title="Цял екран"
-              >
-                <Maximize2 size={18} />
-              </button>
-            )}
-            
             <button
               onClick={() => setExpanded(!expanded)}
               className={`p-2 rounded-lg transition-colors ${
@@ -253,14 +185,6 @@ const StudentFileViewer = ({
                 </h4>
                 
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={toggleFullscreen}
-                    className="flex items-center px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    <Maximize2 size={14} className="mr-1" />
-                    <span className="hidden sm:inline">Цял екран</span>
-                  </button>
-                  
                   <a
                     href={file.driveUrl}
                     target="_blank"
