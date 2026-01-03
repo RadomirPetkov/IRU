@@ -372,12 +372,14 @@ const EnhancedCourseDetailPage = () => {
   };
 
   const getProgress = () => {
-    if (courseProgress) {
-      return courseProgress.progressPercentage || 0;
-    }
     const content = getCourseContent(course);
     if (content.length === 0) return 0;
-    return (completedContent.size / content.length) * 100;
+    
+    // Винаги изчисляваме прогреса на база completedContent
+    const progress = (completedContent.size / content.length) * 100;
+    
+    // Ограничаваме между 0 и 100
+    return Math.min(100, Math.max(0, progress));
   };
 
   const formatDate = (timestamp) => {
