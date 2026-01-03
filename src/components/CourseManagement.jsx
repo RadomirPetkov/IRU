@@ -948,12 +948,12 @@ const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCoun
   };
 
   const handleAudioUploadComplete = (result) => {
-    if (result.success) {
+    if (result && result.url) {
       setFormData({
         ...formData,
         audioUrl: result.url,
         audioPath: result.path,
-        title: formData.title || result.fileName.replace(/\.[^/.]+$/, '')
+        title: formData.title || result.name?.replace(/\.[^/.]+$/, '') || ''
       });
       setAudioUploaded(true);
     } else {
@@ -978,7 +978,7 @@ const AddContentForm = ({ courseId, topics = [], onSubmit, onCancel, contentCoun
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex items-center justify-between">
           <h4 className="text-xl font-semibold text-white flex items-center">
