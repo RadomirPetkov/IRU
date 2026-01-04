@@ -18,6 +18,11 @@ import {
   AlertCircle,
   Video,
   X,
+  FileText,
+  Music,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle,
 } from "lucide-react";
 import {
   getAdminUsersList,
@@ -658,71 +663,10 @@ const AdminDashboard = () => {
                         </p>
                       </div>
                     ) : userStats ? (
-                      <div className="bg-white rounded-xl shadow-lg p-6">
-                        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                          <TrendingUp className="mr-2" size={24} />
-                          Статистики за активност
-                        </h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                          <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {userStats.summary?.totalTimeSpent || 0}
-                            </div>
-                            <div className="text-sm text-blue-800">
-                              Общо минути
-                            </div>
-                          </div>
-                          <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">
-                              {Math.round(
-                                userStats.summary?.completionRate || 0
-                              )}
-                              %
-                            </div>
-                            <div className="text-sm text-green-800">
-                              Завършени видеа
-                            </div>
-                          </div>
-                          <div className="text-center p-4 bg-purple-50 rounded-lg">
-                            <div className="text-2xl font-bold text-purple-600">
-                              {userStats.totalSessions}
-                            </div>
-                            <div className="text-sm text-purple-800">Сесии</div>
-                          </div>
-                        </div>
-
-                        {/* Recent Activity */}
-                        <div>
-                          <h4 className="font-semibold text-gray-800 mb-4">
-                            Последна активност
-                          </h4>
-                          <div className="space-y-2">
-                            {userStats.sessions
-                              ?.slice(0, 5)
-                              .map((session, index) => (
-                                <div
-                                  key={session.id || index}
-                                  className="flex items-center justify-between p-3 bg-gray-50 rounded"
-                                >
-                                  <div className="flex items-center">
-                                    <Calendar
-                                      className="text-gray-400 mr-2"
-                                      size={16}
-                                    />
-                                    <span className="text-sm">
-                                      {formatDate(session.loginAt)}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center text-sm text-gray-600">
-                                    <Clock className="mr-1" size={14} />
-                                    {session.duration || 0} мин
-                                  </div>
-                                </div>
-                              )) || []}
-                          </div>
-                        </div>
-                      </div>
+                      <UserActivityStats 
+                        userStats={userStats} 
+                        formatDate={formatDate}
+                      />
                     ) : (
                       <div className="bg-white rounded-xl shadow-lg p-8 text-center">
                         <Eye className="text-gray-400 mx-auto mb-4" size={48} />
@@ -811,6 +755,249 @@ const AdminDashboard = () => {
           onClose={() => setShowCreateUser(false)}
         />
       )}
+    </div>
+  );
+};
+
+// Компонент за статистики на активността на потребител
+const UserActivityStats = ({ userStats, formatDate }) => {
+  const [showAllSessions, setShowAllSessions] = useState(false);
+  const [expandedSession, setExpandedSession] = useState(null);
+
+  // Изчисляваме общите маркирани материали
+  const getTotalCompletedMaterials = () => {
+    let videos = 0;
+    let files = 0;
+    let audio = 0;
+
+    userStats.sessions?.forEach(session => {
+      if (session.completedContent) {
+        session.completedContent.forEach(item => {
+          if (item.type === 'video') videos++;
+          else if (item.type === 'audio') audio++;
+          else if (item.type === 'file') files++;
+        });
+      }
+    });
+
+    return { videos, files, audio, total: videos + files + audio };
+  };
+
+  // Получаваме материалите за конкретна сесия
+  const getSessionMaterials = (session) => {
+    if (!session.completedContent || session.completedContent.length === 0) {
+      return { videos: 0, files: 0, audio: 0, items: [] };
+    }
+
+    let videos = 0;
+    let files = 0;
+    let audio = 0;
+
+    session.completedContent.forEach(item => {
+      if (item.type === 'video') videos++;
+      else if (item.type === 'audio') audio++;
+      else if (item.type === 'file') files++;
+    });
+
+    return { 
+      videos, 
+      files, 
+      audio, 
+      total: videos + files + audio,
+      items: session.completedContent 
+    };
+  };
+
+  const totalMaterials = getTotalCompletedMaterials();
+  const sessions = userStats.sessions || [];
+  const displayedSessions = showAllSessions ? sessions : sessions.slice(0, 5);
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
+        <TrendingUp className="mr-2" size={24} />
+        Статистики за активност
+      </h3>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="text-center p-4 bg-blue-50 rounded-lg">
+          <div className="text-2xl font-bold text-blue-600">
+            {totalMaterials.videos}
+          </div>
+          <div className="text-sm text-blue-800 flex items-center justify-center">
+            <Video size={14} className="mr-1" />
+            Видеа
+          </div>
+        </div>
+        <div className="text-center p-4 bg-orange-50 rounded-lg">
+          <div className="text-2xl font-bold text-orange-600">
+            {totalMaterials.files}
+          </div>
+          <div className="text-sm text-orange-800 flex items-center justify-center">
+            <FileText size={14} className="mr-1" />
+            Файлове
+          </div>
+        </div>
+        <div className="text-center p-4 bg-teal-50 rounded-lg">
+          <div className="text-2xl font-bold text-teal-600">
+            {totalMaterials.audio}
+          </div>
+          <div className="text-sm text-teal-800 flex items-center justify-center">
+            <Music size={14} className="mr-1" />
+            Аудио
+          </div>
+        </div>
+        <div className="text-center p-4 bg-purple-50 rounded-lg">
+          <div className="text-2xl font-bold text-purple-600">
+            {userStats.totalSessions || 0}
+          </div>
+          <div className="text-sm text-purple-800 flex items-center justify-center">
+            <Activity size={14} className="mr-1" />
+            Сесии
+          </div>
+        </div>
+      </div>
+
+      {/* Total Completed Summary */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <CheckCircle className="text-green-600 mr-2" size={20} />
+            <span className="font-medium text-green-800">
+              Общо прегледани материали: {totalMaterials.total}
+            </span>
+          </div>
+          <div className="text-sm text-green-700">
+            {totalMaterials.videos > 0 && `${totalMaterials.videos} видеа`}
+            {totalMaterials.videos > 0 && (totalMaterials.files > 0 || totalMaterials.audio > 0) && ', '}
+            {totalMaterials.files > 0 && `${totalMaterials.files} файла`}
+            {totalMaterials.files > 0 && totalMaterials.audio > 0 && ', '}
+            {totalMaterials.audio > 0 && `${totalMaterials.audio} аудио`}
+          </div>
+        </div>
+      </div>
+
+      {/* Sessions List */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-semibold text-gray-800">
+            История на сесиите ({sessions.length})
+          </h4>
+          {sessions.length > 5 && (
+            <button
+              onClick={() => setShowAllSessions(!showAllSessions)}
+              className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+            >
+              {showAllSessions ? (
+                <>
+                  <ChevronUp size={16} className="mr-1" />
+                  Покажи по-малко
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={16} className="mr-1" />
+                  Покажи всички ({sessions.length})
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+          {displayedSessions.map((session, index) => {
+            const materials = getSessionMaterials(session);
+            const isExpanded = expandedSession === (session.id || index);
+
+            return (
+              <div
+                key={session.id || index}
+                className="border border-gray-200 rounded-lg overflow-hidden"
+              >
+                {/* Session Header */}
+                <div
+                  onClick={() => setExpandedSession(isExpanded ? null : (session.id || index))}
+                  className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center">
+                    <Calendar className="text-gray-400 mr-2" size={16} />
+                    <span className="text-sm font-medium">
+                      {formatDate(session.loginAt)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
+                    {/* Materials Summary */}
+                    {materials.total > 0 ? (
+                      <div className="flex items-center space-x-2 text-sm">
+                        {materials.videos > 0 && (
+                          <span className="flex items-center text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            <Video size={12} className="mr-1" />
+                            {materials.videos}
+                          </span>
+                        )}
+                        {materials.files > 0 && (
+                          <span className="flex items-center text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                            <FileText size={12} className="mr-1" />
+                            {materials.files}
+                          </span>
+                        )}
+                        {materials.audio > 0 && (
+                          <span className="flex items-center text-teal-600 bg-teal-50 px-2 py-0.5 rounded">
+                            <Music size={12} className="mr-1" />
+                            {materials.audio}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">Няма прегледани</span>
+                    )}
+                    
+                    {materials.total > 0 && (
+                      <ChevronDown 
+                        size={16} 
+                        className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded Content */}
+                {isExpanded && materials.items.length > 0 && (
+                  <div className="p-3 bg-white border-t border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2">Прегледани материали:</p>
+                    <div className="space-y-1">
+                      {materials.items.map((item, itemIndex) => (
+                        <div
+                          key={itemIndex}
+                          className="flex items-center text-sm text-gray-700 py-1"
+                        >
+                          {item.type === 'video' && <Video size={14} className="mr-2 text-blue-500" />}
+                          {item.type === 'file' && <FileText size={14} className="mr-2 text-orange-500" />}
+                          {item.type === 'audio' && <Music size={14} className="mr-2 text-teal-500" />}
+                          <span className="flex-1">{item.title || 'Неизвестен материал'}</span>
+                          {item.completedAt && (
+                            <span className="text-xs text-gray-400">
+                              {formatDate(item.completedAt)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {sessions.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Activity className="mx-auto mb-2 text-gray-300" size={32} />
+              <p>Няма записани сесии</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

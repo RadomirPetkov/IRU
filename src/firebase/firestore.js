@@ -359,14 +359,17 @@ export const recordVideoWatch = async (userEmail, courseId, videoId) => {
   }
 };
 
-// Маркиране на видео като завършено
-export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
+// Маркиране на видео/съдържание като завършено
+export const markVideoAsCompleted = async (userEmail, courseId, videoId, contentData = {}) => {
   try {
     const normalizedEmail = normalizeEmail(userEmail);
 
     if (!normalizedEmail || !courseId || !videoId) {
       return { success: false, error: "Невалидни данни" };
     }
+
+    // Извличаме допълнителните данни
+    const { contentType = 'video', title = '' } = contentData;
 
     // Първо проверяваме дали документът съществува
     const videoProgressRef = doc(
@@ -383,6 +386,8 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
       await setDoc(videoProgressRef, {
         courseId,
         videoId,
+        contentType,
+        title,
         watchedAt: serverTimestamp(),
         completedAt: serverTimestamp(),
         isCompleted: true,
@@ -391,10 +396,21 @@ export const markVideoAsCompleted = async (userEmail, courseId, videoId) => {
       });
     } else {
       // АКО СЪЩЕСТВУВА, ОБНОВЯВАМЕ ГО
-      await updateDoc(videoProgressRef, {
+      const updateData = {
         completedAt: serverTimestamp(),
         isCompleted: true,
-      });
+      };
+      
+      // Добавяме contentType и title ако ги нямаме
+      const existingData = videoProgressSnap.data();
+      if (!existingData.contentType) {
+        updateData.contentType = contentType;
+      }
+      if (!existingData.title && title) {
+        updateData.title = title;
+      }
+      
+      await updateDoc(videoProgressRef, updateData);
     }
 
     // Обновяване на курсовия прогрес

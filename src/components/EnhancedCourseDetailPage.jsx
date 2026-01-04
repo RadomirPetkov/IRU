@@ -262,7 +262,10 @@ const EnhancedCourseDetailPage = () => {
     
     try {
       console.log(`✅ Автоматично маркиране на видео като завършено: ${selectedContent.title}`);
-      const result = await completeVideo(user.email, courseId, selectedContent.id);
+      const result = await completeVideo(user.email, courseId, selectedContent.id, {
+        contentType: 'video',
+        title: selectedContent.title
+      });
       
       if (result.success) {
         setCompletedContent(prev => {
@@ -292,7 +295,10 @@ const EnhancedCourseDetailPage = () => {
     
     try {
       console.log(`✅ Ръчно маркиране на видео като завършено: ${selectedContent.title}`);
-      const result = await completeVideo(user.email, courseId, selectedContent.id);
+      const result = await completeVideo(user.email, courseId, selectedContent.id, {
+        contentType: 'video',
+        title: selectedContent.title
+      });
       
       if (result.success) {
         setCompletedContent(prev => {
@@ -342,11 +348,17 @@ const EnhancedCourseDetailPage = () => {
     }
   };
 
-  const markFileAsCompleted = async (fileId) => {
+  const markFileAsCompleted = async (fileId, fileData = {}) => {
     try {
-      console.log(`✅ Маркиране на файл като прегледан: ${fileId}`);
+      const contentType = fileData.type === CONTENT_TYPES.AUDIO ? 'audio' : 'file';
+      const title = fileData.title || '';
       
-      const result = await completeVideo(user.email, courseId, fileId);
+      console.log(`✅ Маркиране на ${contentType} като прегледан: ${title}`);
+      
+      const result = await completeVideo(user.email, courseId, fileId, {
+        contentType,
+        title
+      });
       
       if (result.success) {
         setCompletedContent(prev => {
@@ -773,7 +785,7 @@ const EnhancedCourseDetailPage = () => {
                       <StudentFileViewer
                         file={selectedContent}
                         isCompleted={isContentCompleted(selectedContent)}
-                        onMarkComplete={() => markFileAsCompleted(selectedContent.id)}
+                        onMarkComplete={() => markFileAsCompleted(selectedContent.id, selectedContent)}
                         showFullContent={true}
                       />
                     )}
@@ -784,7 +796,7 @@ const EnhancedCourseDetailPage = () => {
                         videoUrl={selectedContent.audioUrl || selectedContent.url}
                         title={selectedContent.title}
                         isCompleted={isContentCompleted(selectedContent)}
-                        onVideoCompleted={handleVideoCompleted}
+                        onVideoCompleted={() => markFileAsCompleted(selectedContent.id, selectedContent)}
                         onVideoProgress={handleVideoProgress}
                         onMarkUncompleted={() => handleMarkVideoUncompleted(selectedContent.id)}
                       />

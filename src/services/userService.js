@@ -353,21 +353,26 @@ export const getUserDetailedStats = async (userEmail, requestingUserEmail) => {
     const stats = await getActivityStats(normalizedUserEmail);
 
     if (stats.success) {
-      // Допълнителна обработка на статистиките
+      // Групираме завършените материали по сесия
+      const sessionsWithContent = processSessionsWithContent(
+        stats.data.sessions || [],
+        stats.data.videoProgress || [],
+        stats.data.courseProgress || []
+      );
+
+      // Изчисляваме общите материали
+      const totalMaterials = calculateTotalMaterials(stats.data.videoProgress || []);
+
       const processedStats = {
         ...stats.data,
+        sessions: sessionsWithContent,
+        totalSessions: sessionsWithContent.length,
+        totalMaterials,
         summary: {
-          totalTimeSpent: stats.data.sessions.reduce(
-            (acc, session) => acc + (session.duration || 0),
-            0
-          ),
-          averageSessionTime:
-            stats.data.sessions.length > 0
-              ? stats.data.sessions.reduce(
-                  (acc, session) => acc + (session.duration || 0),
-                  0
-                ) / stats.data.sessions.length
-              : 0,
+          totalVideos: totalMaterials.videos,
+          totalFiles: totalMaterials.files,
+          totalAudio: totalMaterials.audio,
+          totalCompleted: totalMaterials.total,
           completionRate:
             stats.data.videoProgress.length > 0
               ? (stats.data.videoProgress.filter((v) => v.isCompleted).length /
@@ -393,6 +398,114 @@ export const getUserDetailedStats = async (userEmail, requestingUserEmail) => {
     console.error("Error getting detailed user stats:", error);
     return { success: false, error: "Грешка при получаване на статистики" };
   }
+};
+
+/**
+ * Обработка на сесии с включване на завършено съдържание
+ * Всеки материал се присвоява само към една сесия (най-близката по време)
+ */
+const processSessionsWithContent = (sessions, videoProgress, courseProgress) => {
+  if (!sessions || sessions.length === 0) {
+    return [];
+  }
+
+  // Сортираме сесиите по дата (най-стари първи за правилно присвояване)
+  const sortedSessions = [...sessions].sort((a, b) => {
+    const dateA = a.loginAt?.toDate ? a.loginAt.toDate() : new Date(a.loginAt);
+    const dateB = b.loginAt?.toDate ? b.loginAt.toDate() : new Date(b.loginAt);
+    return dateA - dateB;
+  });
+
+  // Създаваме Set за проследяване на вече присвоени материали
+  const assignedMaterials = new Set();
+
+  // Обработваме сесиите и присвояваме материали
+  const sessionsWithContent = sortedSessions.map((session, index) => {
+    const sessionStart = session.loginAt?.toDate ? session.loginAt.toDate() : new Date(session.loginAt);
+    
+    // Намираме края на сесията - или logoutAt, или началото на следващата сесия
+    let sessionEnd;
+    if (session.logoutAt) {
+      sessionEnd = session.logoutAt?.toDate ? session.logoutAt.toDate() : new Date(session.logoutAt);
+    } else if (index < sortedSessions.length - 1) {
+      // Ако няма logout, използваме началото на следващата сесия
+      const nextSession = sortedSessions[index + 1];
+      sessionEnd = nextSession.loginAt?.toDate ? nextSession.loginAt.toDate() : new Date(nextSession.loginAt);
+    } else {
+      // За последната сесия без logout - използваме текущото време или +30 мин
+      sessionEnd = new Date(Math.max(sessionStart.getTime() + 30 * 60 * 1000, Date.now()));
+    }
+
+    // Намираме материали завършени през тази сесия (които още не са присвоени)
+    const completedContent = [];
+
+    videoProgress.forEach(video => {
+      if (video.isCompleted && video.completedAt && !assignedMaterials.has(video.videoId)) {
+        const completedDate = video.completedAt?.toDate 
+          ? video.completedAt.toDate() 
+          : new Date(video.completedAt);
+        
+        // Проверяваме дали е завършено през тази сесия
+        if (completedDate >= sessionStart && completedDate < sessionEnd) {
+          completedContent.push({
+            type: video.contentType || 'video',
+            title: video.title || video.videoId || 'Неизвестен материал',
+            contentId: video.videoId,
+            courseId: video.courseId,
+            completedAt: video.completedAt
+          });
+          // Маркираме материала като присвоен
+          assignedMaterials.add(video.videoId);
+        }
+      }
+    });
+
+    // Сортираме по време на завършване
+    completedContent.sort((a, b) => {
+      const dateA = a.completedAt?.toDate ? a.completedAt.toDate() : new Date(a.completedAt);
+      const dateB = b.completedAt?.toDate ? b.completedAt.toDate() : new Date(b.completedAt);
+      return dateA - dateB;
+    });
+
+    return {
+      ...session,
+      completedContent,
+      materialsCount: {
+        videos: completedContent.filter(c => c.type === 'video').length,
+        files: completedContent.filter(c => c.type === 'file').length,
+        audio: completedContent.filter(c => c.type === 'audio').length,
+        total: completedContent.length
+      }
+    };
+  });
+
+  // Връщаме сесиите сортирани по дата (най-нови първи)
+  return sessionsWithContent.reverse();
+};
+
+/**
+ * Изчисляване на общите завършени материали
+ */
+const calculateTotalMaterials = (videoProgress) => {
+  let videos = 0;
+  let files = 0;
+  let audio = 0;
+
+  videoProgress.forEach(item => {
+    if (item.isCompleted) {
+      const type = item.contentType || 'video';
+      if (type === 'video') videos++;
+      else if (type === 'audio') audio++;
+      else if (type === 'file') files++;
+    }
+  });
+
+  return {
+    videos,
+    files,
+    audio,
+    total: videos + files + audio
+  };
 };
 
 // ============= КУРСОВЕ И ВИДЕА =============
@@ -467,9 +580,9 @@ export const startVideo = async (userEmail, courseId, videoId) => {
 };
 
 /**
- * Завършване на видео
+ * Завършване на видео/съдържание
  */
-export const completeVideo = async (userEmail, courseId, videoId) => {
+export const completeVideo = async (userEmail, courseId, videoId, contentData = {}) => {
   try {
     const normalizedEmail = normalizeEmail(userEmail);
 
@@ -480,7 +593,8 @@ export const completeVideo = async (userEmail, courseId, videoId) => {
     const result = await markVideoAsCompleted(
       normalizedEmail,
       courseId,
-      videoId
+      videoId,
+      contentData
     );
     return result;
   } catch (error) {
