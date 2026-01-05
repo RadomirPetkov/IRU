@@ -786,6 +786,7 @@ const EnhancedCourseDetailPage = () => {
                         file={selectedContent}
                         isCompleted={isContentCompleted(selectedContent)}
                         onMarkComplete={() => markFileAsCompleted(selectedContent.id, selectedContent)}
+                        onMarkUncomplete={() => handleMarkVideoUncompleted(selectedContent.id)}
                         showFullContent={true}
                       />
                     )}

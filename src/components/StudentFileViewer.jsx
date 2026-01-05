@@ -19,6 +19,7 @@ const StudentFileViewer = ({
   file, 
   isCompleted = false, 
   onMarkComplete,
+  onMarkUncomplete,
   showFullContent = true 
 }) => {
   const [expanded, setExpanded] = useState(showFullContent);
@@ -276,22 +277,32 @@ const StudentFileViewer = ({
               </button>
             )}
             
+            {isCompleted && (
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center text-green-600 font-medium">
+                  <CheckCircle size={16} className="mr-2" />
+                  Прегледано
+                </div>
+                {onMarkUncomplete && (
+                  <button
+                    onClick={onMarkUncomplete}
+                    className="flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    Отмени
+                  </button>
+                )}
+              </div>
+            )}
+            
             <a
               href={file.driveUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium ml-auto"
             >
               <ExternalLink size={16} className="mr-2" />
               Отвори в нов таб
             </a>
-            
-            {isCompleted && (
-              <div className="flex items-center text-green-600 font-medium ml-auto">
-                <CheckCircle size={16} className="mr-2" />
-                Прегледано
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -327,6 +338,23 @@ const StudentFileViewer = ({
                   <CheckCircle size={16} className="mr-2" />
                   Маркирай
                 </button>
+              )}
+              
+              {isCompleted && (
+                <div className="flex items-center space-x-2">
+                  <span className="flex items-center text-green-600 font-medium">
+                    <CheckCircle size={16} className="mr-1" />
+                    Прегледано
+                  </span>
+                  {onMarkUncomplete && (
+                    <button
+                      onClick={onMarkUncomplete}
+                      className="text-sm text-gray-500 hover:text-red-600"
+                    >
+                      Отмени
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

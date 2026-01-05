@@ -1197,6 +1197,29 @@ const AudioPlayer = ({
             <div className="text-center mt-4 text-sm text-gray-500">
               Прогрес: {Math.round(watchProgress)}%
             </div>
+
+            {/* Manual completion button */}
+            {!isCompleted && !hasTriggeredCompletion && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => {
+                    hasTriggeredRef.current = true;
+                    setHasTriggeredCompletion(true);
+                    setShowCompletionNotification(true);
+                    if (onAudioCompleted) {
+                      onAudioCompleted();
+                    }
+                    setTimeout(() => {
+                      setShowCompletionNotification(false);
+                    }, 3000);
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center mx-auto"
+                >
+                  <CheckCircle size={18} className="mr-2" />
+                  Маркирай като завършено
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
