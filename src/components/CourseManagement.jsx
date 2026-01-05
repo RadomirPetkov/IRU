@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import {
   getAllCourses,
+  getCourse,
   createCourse,
   updateCourse,
   deleteCourse,
@@ -61,6 +62,22 @@ const EnhancedCourseManagement = ({ adminEmail }) => {
       setError('Грешка при зареждане на курсове');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Обновява само един курс без да презарежда всичко
+  const refreshSingleCourse = async (courseId) => {
+    try {
+      const result = await getCourse(courseId);
+      if (result.success) {
+        setCourses(prevCourses => 
+          prevCourses.map(course => 
+            course.id === courseId ? result.data : course
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Грешка при обновяване на курс:', error);
     }
   };
 
@@ -189,7 +206,7 @@ const EnhancedCourseManagement = ({ adminEmail }) => {
               course={course}
               onEdit={setEditingCourse}
               onDelete={handleDeleteCourse}
-              onUpdate={loadCourses}
+              onUpdate={() => refreshSingleCourse(course.id)}
               adminEmail={adminEmail}
             />
           ))}
