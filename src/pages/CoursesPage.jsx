@@ -179,14 +179,11 @@ const CoursesPage = () => {
                             {course.icon}
                           </div>
                           <h3 className="font-semibold text-gray-800 text-sm mb-1">
-                            Ниво {course.level}
+                            {course.title}
                           </h3>
                           <p className="text-xs text-gray-600">
-                            {course.content?.filter((c) => c.type === "video")
-                              .length ||
-                              course.videos?.length ||
-                              0}{" "}
-                            видеа
+                            {course.topics?.length || 0}{" "}
+                            {course.topics?.length === 1 ? "тема" : "теми"}
                           </p>
                         </div>
                       ))
@@ -388,9 +385,6 @@ const CoursesPage = () => {
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-4xl">{course.icon}</div>
-                        <div className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
-                          Ниво {course.level}
-                        </div>
                       </div>
                       <h3 className="text-xl font-bold mb-2">{course.title}</h3>
                       <p className="text-white text-opacity-90">
@@ -468,9 +462,6 @@ const CoursesPage = () => {
                       </div>
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-4xl opacity-60">{course.icon}</div>
-                        <div className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
-                          Ниво {course.level}
-                        </div>
                       </div>
                       <h3 className="text-xl font-bold mb-2">{course.title}</h3>
                       <p className="text-white text-opacity-90">
