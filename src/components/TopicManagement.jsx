@@ -52,7 +52,7 @@ const TopicManagement = ({
   adminEmail,
   onUpdate 
 }) => {
-  const [expandedTopics, setExpandedTopics] = useState(new Set(topics.map(t => t.id)));
+  const [expandedTopics, setExpandedTopics] = useState(new Set());
   const [showAddTopic, setShowAddTopic] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -75,6 +75,14 @@ const TopicManagement = ({
       newExpanded.add(topicId);
     }
     setExpandedTopics(newExpanded);
+  };
+
+  const expandAllTopics = () => {
+    setExpandedTopics(new Set(topics.map(t => t.id)));
+  };
+
+  const collapseAllTopics = () => {
+    setExpandedTopics(new Set());
   };
 
   const getTopicContent = (topicId) => {
@@ -232,23 +240,48 @@ const TopicManagement = ({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center">
           <BookOpen size={20} className="mr-2" />
           Теми в курса ({topics.length})
         </h3>
         
-        <button
-          onClick={() => {
-            setShowAddTopic(true);
-            setEditingTopic(null);
-            setTopicForm({ title: '', description: '', icon: '📖', color: 'blue' });
-          }}
-          className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-        >
-          <FolderPlus size={16} className="mr-2" />
-          Добави тема
-        </button>
+        <div className="flex items-center space-x-2">
+          {/* Expand/Collapse All Buttons */}
+          {topics.length > 0 && (
+            <div className="flex items-center space-x-1 mr-2">
+              <button
+                onClick={expandAllTopics}
+                className="flex items-center px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                title="Разгъни всички"
+              >
+                <ChevronDown size={14} className="mr-1" />
+                Разгъни
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={collapseAllTopics}
+                className="flex items-center px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                title="Затвори всички"
+              >
+                <ChevronRight size={14} className="mr-1" />
+                Затвори
+              </button>
+            </div>
+          )}
+          
+          <button
+            onClick={() => {
+              setShowAddTopic(true);
+              setEditingTopic(null);
+              setTopicForm({ title: '', description: '', icon: '📖', color: 'blue' });
+            }}
+            className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            <FolderPlus size={16} className="mr-2" />
+            Добави тема
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
