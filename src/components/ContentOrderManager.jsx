@@ -1,192 +1,165 @@
-// src/components/ContentOrderManager.jsx - Компонент за подреждане на съдържание
+// src/components/ContentOrderManager.jsx - Компонент за подреждане на теми и съдържание
 import React, { useState, useEffect } from 'react';
 import {
+  X,
   GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Save,
   Video,
   FileText,
-  ArrowUp,
-  ArrowDown,
-  Save,
-  X,
-  RotateCcw,
+  Music,
+  FolderOpen,
   AlertCircle,
   CheckCircle,
-  Move3D
+  Layers,
+  BookOpen
 } from 'lucide-react';
-import { CONTENT_TYPES } from '../firebase/courses';
-import { updateCourse } from '../firebase/courses';
+import { updateCourse, reorderTopics, CONTENT_TYPES } from '../firebase/courses';
 
-const ContentOrderManager = ({ 
-  course, 
-  onClose, 
-  onUpdate, 
-  adminEmail 
-}) => {
-  const [content, setContent] = useState([]);
-  const [hasChanges, setHasChanges] = useState(false);
+const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
+  const [activeTab, setActiveTab] = useState('content'); // 'content' or 'topics'
+  const [contentItems, setContentItems] = useState([]);
+  const [topicItems, setTopicItems] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [dragOverItem, setDragOverItem] = useState(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
 
+  // Инициализация
   useEffect(() => {
-    if (course?.content) {
-      // Създаваме копие на съдържанието и го сортираме по order
-      const sortedContent = [...course.content].sort((a, b) => (a.order || 0) - (b.order || 0));
-      setContent(sortedContent);
-    }
+    // Подготви съдържание
+    const content = course.content || [];
+    const sortedContent = [...content].sort((a, b) => (a.order || 0) - (b.order || 0));
+    setContentItems(sortedContent);
+
+    // Подготви теми
+    const topics = course.topics || [];
+    const sortedTopics = [...topics].sort((a, b) => (a.order || 0) - (b.order || 0));
+    setTopicItems(sortedTopics);
   }, [course]);
 
-  const getContentIcon = (type) => {
-    return type === CONTENT_TYPES.VIDEO ? 
-      <Video size={16} className="text-blue-600" /> : 
-      <FileText size={16} className="text-green-600" />;
+  // Намери темата за даден елемент от съдържанието
+  const getTopicForContent = (contentItem) => {
+    if (!contentItem.topicId) return null;
+    return topicItems.find(t => t.id === contentItem.topicId);
   };
 
-  const getContentTypeLabel = (type) => {
-    return type === CONTENT_TYPES.VIDEO ? 'Видео' : 'Задача';
-  };
-
-  const moveItem = (fromIndex, toIndex) => {
-    if (fromIndex === toIndex) return;
-
-    const newContent = [...content];
-    const [movedItem] = newContent.splice(fromIndex, 1);
-    newContent.splice(toIndex, 0, movedItem);
-
-    // Обновяваме order номерата
-    const updatedContent = newContent.map((item, index) => ({
-      ...item,
-      order: index + 1
-    }));
-
-    setContent(updatedContent);
+  // Преместване на съдържание нагоре
+  const moveContentUp = (index) => {
+    if (index === 0) return;
+    const newItems = [...contentItems];
+    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+    setContentItems(newItems);
     setHasChanges(true);
   };
 
-  const moveUp = (index) => {
-    if (index > 0) {
-      moveItem(index, index - 1);
-    }
+  // Преместване на съдържание надолу
+  const moveContentDown = (index) => {
+    if (index === contentItems.length - 1) return;
+    const newItems = [...contentItems];
+    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+    setContentItems(newItems);
+    setHasChanges(true);
   };
 
-  const moveDown = (index) => {
-    if (index < content.length - 1) {
-      moveItem(index, index + 1);
-    }
+  // Преместване на тема нагоре
+  const moveTopicUp = (index) => {
+    if (index === 0) return;
+    const newItems = [...topicItems];
+    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+    setTopicItems(newItems);
+    setHasChanges(true);
   };
 
-  const handleDragStart = (e, index) => {
-    setDraggedItem(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', '');
+  // Преместване на тема надолу
+  const moveTopicDown = (index) => {
+    if (index === topicItems.length - 1) return;
+    const newItems = [...topicItems];
+    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+    setTopicItems(newItems);
+    setHasChanges(true);
   };
 
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    
-    if (draggedItem !== null && draggedItem !== index) {
-      setDragOverItem(index);
-    }
-  };
-
-  const handleDragLeave = () => {
-    setDragOverItem(null);
-  };
-
-  const handleDrop = (e, index) => {
-    e.preventDefault();
-    
-    if (draggedItem !== null && draggedItem !== index) {
-      moveItem(draggedItem, index);
-    }
-    
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDragOverItem(null);
-  };
-
-  const resetOrder = () => {
-    if (course?.content) {
-      const originalContent = [...course.content].sort((a, b) => (a.order || 0) - (b.order || 0));
-      setContent(originalContent);
-      setHasChanges(false);
-    }
-  };
-
-  const saveOrder = async () => {
+  // Запазване на промените
+  const handleSave = async () => {
     setSaving(true);
+    setError('');
+    setSuccess('');
+
     try {
-      // Подготвяме новото съдържание с обновените order номера
-      const updatedContent = content.map((item, index) => ({
+      // Запази подредбата на съдържанието
+      const updatedContent = contentItems.map((item, index) => ({
         ...item,
         order: index + 1
       }));
 
-      // Актуализираме курса с новото подреждане
-      const result = await updateCourse(course.id, { content: updatedContent }, adminEmail);
-      
-      if (result.success) {
-        setHasChanges(false);
-        onUpdate?.();
-        // Показваме успех за кратко
-        setTimeout(() => {
-          onClose?.();
-        }, 1500);
-      } else {
-        throw new Error(result.error || 'Грешка при запазване');
+      const contentResult = await updateCourse(course.id, {
+        content: updatedContent
+      }, adminEmail);
+
+      if (!contentResult.success) {
+        setError(contentResult.error || 'Грешка при запазване на съдържание');
+        setSaving(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error saving content order:', error);
-      alert('Грешка при запазване на подреждането: ' + error.message);
+
+      // Запази подредбата на темите
+      if (topicItems.length > 0) {
+        const topicIds = topicItems.map(t => t.id);
+        const topicsResult = await reorderTopics(course.id, topicIds, adminEmail);
+        
+        if (!topicsResult.success) {
+          setError(topicsResult.error || 'Грешка при запазване на теми');
+          setSaving(false);
+          return;
+        }
+      }
+
+      setSuccess('Подредбата е запазена успешно');
+      setHasChanges(false);
+      
+      if (onUpdate) {
+        onUpdate();
+      }
+
+      setTimeout(() => {
+        setSuccess('');
+      }, 2000);
+    } catch (err) {
+      setError('Грешка при запазване');
     } finally {
       setSaving(false);
     }
   };
 
-  if (!course?.content || course.content.length === 0) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
-          <div className="p-6 text-center">
-            <FileText className="text-gray-400 mx-auto mb-4" size={48} />
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              Няма съдържание
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Този курс не съдържа видеа или задачи за подреждане
-            </p>
-            <button
-              onClick={onClose}
-              className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              Затвори
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Икона за тип съдържание
+  const getContentIcon = (item) => {
+    if (item.type === CONTENT_TYPES.VIDEO) {
+      return <Video size={16} className="text-blue-500" />;
+    }
+    if (item.fileType === 'Аудио' || item.audioUrl) {
+      return <Music size={16} className="text-purple-500" />;
+    }
+    return <FileText size={16} className="text-green-500" />;
+  };
+
+  // Тип на съдържанието като текст
+  const getContentTypeText = (item) => {
+    if (item.type === CONTENT_TYPES.VIDEO) return 'Видео';
+    if (item.fileType === 'Аудио' || item.audioUrl) return 'Аудио';
+    return item.fileType || 'Файл';
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        
+      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">
-              Подреждане на съдържание
-            </h2>
-            <p className="text-gray-600 mt-1">
-              {course.title} • {content.length} елемента
-            </p>
-          </div>
-          <button
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h3 className="text-xl font-bold text-gray-800">
+            Подреждане - {course.title}
+          </h3>
+          <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
@@ -194,128 +167,238 @@ const ContentOrderManager = ({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto max-h-[60vh] p-6">
-          <div className="space-y-2">
-            {content.map((item, index) => (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`
-                  bg-gray-50 border border-gray-200 rounded-lg p-4 transition-all duration-200 cursor-move
-                  hover:bg-gray-100 hover:shadow-md
-                  ${draggedItem === index ? 'opacity-50 transform rotate-2' : ''}
-                  ${dragOverItem === index ? 'border-blue-500 bg-blue-50' : ''}
-                `}
-              >
-                <div className="flex items-center space-x-4">
-                  {/* Drag Handle */}
-                  <div className="flex items-center text-gray-400 hover:text-gray-600">
-                    <GripVertical size={20} />
-                  </div>
-
-                  {/* Order Number */}
-                  <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                    {index + 1}
-                  </div>
-
-                  {/* Content Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      {getContentIcon(item.type)}
-                      <span className="text-sm font-medium text-gray-600">
-                        {getContentTypeLabel(item.type)}
-                      </span>
-                    </div>
-                    <h4 className="font-semibold text-gray-800">
-                      {item.title}
-                    </h4>
-                    {item.duration && (
-                      <p className="text-sm text-gray-500">
-                        Продължitelност: {item.duration}
-                      </p>
-                    )}
-                    {item.estimatedTime && (
-                      <p className="text-sm text-gray-500">
-                        Очаквано време: {item.estimatedTime}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Manual Move Buttons */}
-                  <div className="flex flex-col space-y-1">
-                    <button
-                      onClick={() => moveUp(index)}
-                      disabled={index === 0}
-                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Премести нагоре"
-                    >
-                      <ArrowUp size={16} />
-                    </button>
-                    <button
-                      onClick={() => moveDown(index)}
-                      disabled={index === content.length - 1}
-                      className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Премести надолу"
-                    >
-                      <ArrowDown size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`flex-1 px-4 py-3 font-medium transition-colors flex items-center justify-center space-x-2 ${
+              activeTab === 'content'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <Layers size={18} />
+            <span>Съдържание ({contentItems.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('topics')}
+            className={`flex-1 px-4 py-3 font-medium transition-colors flex items-center justify-center space-x-2 ${
+              activeTab === 'topics'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <BookOpen size={18} />
+            <span>Теми ({topicItems.length})</span>
+          </button>
         </div>
 
-        {/* Instructions */}
-        <div className="px-6 py-3 bg-blue-50 border-t border-blue-200">
-          <div className="flex items-center text-sm text-blue-700">
-            <AlertCircle size={16} className="mr-2" />
-            <span>
-              Използвайте drag & drop или стрелките за промяна на реда. 
-              Промените ще се отразят при запазване.
-            </span>
+        {/* Messages */}
+        {error && (
+          <div className="mx-4 mt-4 flex items-center p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+            {error}
           </div>
+        )}
+        
+        {success && (
+          <div className="mx-4 mt-4 flex items-center p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            <CheckCircle size={16} className="mr-2 flex-shrink-0" />
+            {success}
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Content Tab */}
+          {activeTab === 'content' && (
+            <div className="space-y-2">
+              {contentItems.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Layers size={48} className="mx-auto mb-2 opacity-50" />
+                  <p>Няма съдържание за подреждане</p>
+                </div>
+              ) : (
+                contentItems.map((item, index) => {
+                  const topic = getTopicForContent(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                    >
+                      {/* Drag Handle */}
+                      <div className="text-gray-400 mr-3 cursor-move">
+                        <GripVertical size={20} />
+                      </div>
+
+                      {/* Order Number */}
+                      <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-medium text-sm mr-3 flex-shrink-0">
+                        {index + 1}
+                      </div>
+
+                      {/* Content Icon */}
+                      <div className="mr-3 flex-shrink-0">
+                        {getContentIcon(item)}
+                      </div>
+
+                      {/* Content Info */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-800 truncate">{item.title}</h4>
+                        <div className="flex items-center space-x-3 text-xs text-gray-500 mt-0.5">
+                          <span>{getContentTypeText(item)}</span>
+                          {topic && (
+                            <span className="flex items-center bg-gray-200 px-2 py-0.5 rounded">
+                              <FolderOpen size={10} className="mr-1" />
+                              {topic.icon} {topic.title}
+                            </span>
+                          )}
+                          {!topic && item.topicId && (
+                            <span className="text-orange-500 italic">Тема не е намерена</span>
+                          )}
+                          {!item.topicId && (
+                            <span className="text-gray-400 italic">Без тема</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Move Buttons */}
+                      <div className="flex items-center space-x-1 ml-2">
+                        <button
+                          onClick={() => moveContentUp(index)}
+                          disabled={index === 0}
+                          className={`p-1.5 rounded transition-colors ${
+                            index === 0
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
+                          title="Премести нагоре"
+                        >
+                          <ChevronUp size={18} />
+                        </button>
+                        <button
+                          onClick={() => moveContentDown(index)}
+                          disabled={index === contentItems.length - 1}
+                          className={`p-1.5 rounded transition-colors ${
+                            index === contentItems.length - 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
+                          title="Премести надолу"
+                        >
+                          <ChevronDown size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Topics Tab */}
+          {activeTab === 'topics' && (
+            <div className="space-y-2">
+              {topicItems.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <BookOpen size={48} className="mx-auto mb-2 opacity-50" />
+                  <p>Няма теми за подреждане</p>
+                </div>
+              ) : (
+                topicItems.map((topic, index) => {
+                  // Брой съдържание в темата
+                  const contentCount = contentItems.filter(c => c.topicId === topic.id).length;
+                  
+                  return (
+                    <div
+                      key={topic.id}
+                      className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                    >
+                      {/* Drag Handle */}
+                      <div className="text-gray-400 mr-3 cursor-move">
+                        <GripVertical size={20} />
+                      </div>
+
+                      {/* Order Number */}
+                      <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center font-medium text-sm mr-3 flex-shrink-0">
+                        {index + 1}
+                      </div>
+
+                      {/* Topic Icon */}
+                      <div className="text-2xl mr-3 flex-shrink-0">
+                        {topic.icon || '📖'}
+                      </div>
+
+                      {/* Topic Info */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-800 truncate">{topic.title}</h4>
+                        <div className="flex items-center space-x-3 text-xs text-gray-500 mt-0.5">
+                          <span>{contentCount} {contentCount === 1 ? 'материал' : 'материала'}</span>
+                          {topic.description && (
+                            <span className="truncate max-w-[200px]">{topic.description}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Move Buttons */}
+                      <div className="flex items-center space-x-1 ml-2">
+                        <button
+                          onClick={() => moveTopicUp(index)}
+                          disabled={index === 0}
+                          className={`p-1.5 rounded transition-colors ${
+                            index === 0
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+                          }`}
+                          title="Премести нагоре"
+                        >
+                          <ChevronUp size={18} />
+                        </button>
+                        <button
+                          onClick={() => moveTopicDown(index)}
+                          disabled={index === topicItems.length - 1}
+                          className={`p-1.5 rounded transition-colors ${
+                            index === topicItems.length - 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+                          }`}
+                          title="Премести надолу"
+                        >
+                          <ChevronDown size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center space-x-3">
-            {hasChanges && (
-              <div className="flex items-center text-orange-600 text-sm">
-                <AlertCircle size={16} className="mr-1" />
-                Има незапазени промени
-              </div>
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+          <div className="text-sm text-gray-500">
+            {hasChanges ? (
+              <span className="text-orange-600 font-medium">● Има незапазени промени</span>
+            ) : (
+              <span>Използвайте стрелките за да преместите елементите</span>
             )}
           </div>
-
+          
           <div className="flex items-center space-x-3">
             <button
-              onClick={resetOrder}
-              disabled={!hasChanges || saving}
-              className="flex items-center text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <RotateCcw size={16} className="mr-1" />
-              Нулирай
-            </button>
-
-            <button
               onClick={onClose}
-              disabled={saving}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
             >
-              Отказ
+              Затвори
             </button>
-
             <button
-              onClick={saveOrder}
-              disabled={!hasChanges || saving}
-              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                saving || !hasChanges
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
             >
               {saving ? (
                 <>
@@ -325,22 +408,12 @@ const ContentOrderManager = ({
               ) : (
                 <>
                   <Save size={16} className="mr-2" />
-                  Запази подреждането
+                  Запази подредбата
                 </>
               )}
             </button>
           </div>
         </div>
-
-        {/* Success Message */}
-        {saving && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 flex items-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-3"></div>
-              <span className="text-gray-700">Запазване на новото подреждане...</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
