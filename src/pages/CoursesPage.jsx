@@ -6,6 +6,8 @@ import Login from "../components/Login";
 import {
   Lock,
   ArrowLeft,
+  Play,
+  Clock,
   CheckCircle,
   XCircle,
   Users,
@@ -17,6 +19,7 @@ import {
   Settings,
 } from "lucide-react";
 import { courses, reloadCourses, checkForUpdates } from "../data/coursesData";
+import EUProjectBanner from "../components/EUProjectBanner";
 
 const CoursesPage = () => {
   const {
@@ -179,11 +182,14 @@ const CoursesPage = () => {
                             {course.icon}
                           </div>
                           <h3 className="font-semibold text-gray-800 text-sm mb-1">
-                            {course.title}
+                            Ниво {course.level}
                           </h3>
                           <p className="text-xs text-gray-600">
-                            {course.topics?.length || 0}{" "}
-                            {course.topics?.length === 1 ? "тема" : "теми"}
+                            {course.content?.filter((c) => c.type === "video")
+                              .length ||
+                              course.videos?.length ||
+                              0}{" "}
+                            видеа
                           </p>
                         </div>
                       ))
@@ -200,6 +206,11 @@ const CoursesPage = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* EU Project Banner */}
+            <div className="mt-12">
+              <EUProjectBanner variant="full" />
             </div>
 
             {/* Login Modal */}
@@ -385,6 +396,9 @@ const CoursesPage = () => {
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-4xl">{course.icon}</div>
+                        <div className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
+                          Ниво {course.level}
+                        </div>
                       </div>
                       <h3 className="text-xl font-bold mb-2">{course.title}</h3>
                       <p className="text-white text-opacity-90">
@@ -394,36 +408,46 @@ const CoursesPage = () => {
 
                     {/* Course Content */}
                     <div className="p-6">
-                      <div className="flex items-center mb-4">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center text-gray-600">
-                          <BookOpen size={16} className="mr-2" />
-                          {course.topics?.length || 0} {course.topics?.length === 1 ? "тема" : "теми"}
+                          <Play size={16} className="mr-2" />
+                          {course.content?.filter((c) => c.type === "video")
+                            .length ||
+                            course.videos?.length ||
+                            0}{" "}
+                          видео лекции
+                        </div>
+                        <div className="flex items-center text-gray-600">
+                          <Clock size={16} className="mr-2" />
+                          {course.estimatedHours || 1} часа
                         </div>
                       </div>
 
-                      {/* Course Topics Preview */}
+                      {/* Course Videos Preview */}
                       <div className="space-y-2 mb-6">
-                        {(course.topics || [])
+                        {(
+                          course.content?.filter((c) => c.type === "video") ||
+                          course.videos ||
+                          []
+                        )
                           .slice(0, 3)
-                          .map((topic, index) => (
+                          .map((video, index) => (
                             <div
-                              key={topic.id || index}
+                              key={video.id || index}
                               className="flex items-center text-sm text-gray-600"
                             >
-                              <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mr-3 text-base">
-                                {topic.icon || "📖"}
+                              <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mr-3 text-xs">
+                                {index + 1}
                               </div>
-                              <span className="flex-1">{topic.title}</span>
+                              <span className="flex-1">{video.title}</span>
+                              <span className="text-xs">
+                                {video.duration || "0:00"}
+                              </span>
                             </div>
                           ))}
-                        {(course.topics?.length || 0) > 3 && (
+                        {(course.videos?.length || 0) > 3 && (
                           <div className="text-xs text-gray-500 ml-9">
-                            +{(course.topics?.length || 0) - 3} още теми
-                          </div>
-                        )}
-                        {(!course.topics || course.topics.length === 0) && (
-                          <div className="text-sm text-gray-400 italic">
-                            Няма добавени теми
+                            +{(course.videos?.length || 0) - 3} още видеа
                           </div>
                         )}
                       </div>
@@ -462,6 +486,9 @@ const CoursesPage = () => {
                       </div>
                       <div className="flex items-center justify-between mb-4">
                         <div className="text-4xl opacity-60">{course.icon}</div>
+                        <div className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm">
+                          Ниво {course.level}
+                        </div>
                       </div>
                       <h3 className="text-xl font-bold mb-2">{course.title}</h3>
                       <p className="text-white text-opacity-90">
@@ -477,8 +504,8 @@ const CoursesPage = () => {
                           Ограничен достъп
                         </div>
                         <div className="flex items-center text-gray-400">
-                          <BookOpen size={16} className="mr-2" />
-                          {course.topics?.length || 0} теми
+                          <Play size={16} className="mr-2" />
+                          {course.videos?.length || 0} видеа
                         </div>
                       </div>
 
@@ -573,6 +600,9 @@ const CoursesPage = () => {
               </div>
             </div>
           )}
+
+          {/* EU Project Banner */}
+          <EUProjectBanner variant="full" />
         </div>
       </div>
     </div>
