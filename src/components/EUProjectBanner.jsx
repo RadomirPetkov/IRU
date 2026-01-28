@@ -197,8 +197,7 @@ const ProjectDetailsModal = ({ onClose }) => {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-800 mb-2">Териториален обхват</h3>
                 <p className="text-gray-700">
-                  На територията на обекта се провеждат обучения и на доставчик на обучение е предоставена 
-                  безвъзмездна финансова помощ по проекта.
+                  На територията на цялата страна.
                 </p>
               </div>
 
@@ -279,8 +278,7 @@ const ProjectDetailsModal = ({ onClose }) => {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-800 mb-2">Обхват</h3>
                 <p className="text-gray-700">
-                  На територията на обекта се провеждат обучения и на Доставчика на обучения е предоставена 
-                  безвъзмездна финансова помощ по инвестицията.
+                  На територията на цялата страна.
                 </p>
               </div>
 
