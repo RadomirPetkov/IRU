@@ -1,10 +1,12 @@
-// src/components/ContentOrderManager.jsx - Компонент за подреждане на теми и съдържание
-import React, { useState, useEffect } from 'react';
+// src/components/ContentOrderManager.jsx - Компонент за подреждане на теми и съдържание с drag & drop
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   GripVertical,
   ChevronUp,
   ChevronDown,
+  ChevronsUp,
+  ChevronsDown,
   Save,
   Video,
   FileText,
@@ -13,7 +15,9 @@ import {
   AlertCircle,
   CheckCircle,
   Layers,
-  BookOpen
+  BookOpen,
+  ArrowUpDown,
+  RotateCcw
 } from 'lucide-react';
 import { updateCourse, reorderTopics, CONTENT_TYPES } from '../firebase/courses';
 
@@ -21,10 +25,18 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
   const [activeTab, setActiveTab] = useState('content'); // 'content' or 'topics'
   const [contentItems, setContentItems] = useState([]);
   const [topicItems, setTopicItems] = useState([]);
+  const [originalContent, setOriginalContent] = useState([]);
+  const [originalTopics, setOriginalTopics] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Drag state
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [draggedOverItem, setDraggedOverItem] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragNode = useRef(null);
 
   // Инициализация
   useEffect(() => {
@@ -32,11 +44,13 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
     const content = course.content || [];
     const sortedContent = [...content].sort((a, b) => (a.order || 0) - (b.order || 0));
     setContentItems(sortedContent);
+    setOriginalContent(sortedContent);
 
     // Подготви теми
     const topics = course.topics || [];
     const sortedTopics = [...topics].sort((a, b) => (a.order || 0) - (b.order || 0));
     setTopicItems(sortedTopics);
+    setOriginalTopics(sortedTopics);
   }, [course]);
 
   // Намери темата за даден елемент от съдържанието
@@ -44,6 +58,84 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
     if (!contentItem.topicId) return null;
     return topicItems.find(t => t.id === contentItem.topicId);
   };
+
+  // ==================== DRAG AND DROP ====================
+  
+  const handleDragStart = (e, index, type) => {
+    setDraggedItem({ index, type });
+    setIsDragging(true);
+    dragNode.current = e.target;
+    
+    // Добави визуален ефект след кратко забавяне
+    setTimeout(() => {
+      if (dragNode.current) {
+        dragNode.current.classList.add('opacity-50');
+      }
+    }, 0);
+    
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragEnter = (e, index, type) => {
+    e.preventDefault();
+    if (draggedItem && draggedItem.type === type && draggedItem.index !== index) {
+      setDraggedOverItem({ index, type });
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, targetIndex, type) => {
+    e.preventDefault();
+    
+    if (!draggedItem || draggedItem.type !== type) return;
+    
+    const sourceIndex = draggedItem.index;
+    
+    if (sourceIndex === targetIndex) {
+      resetDragState();
+      return;
+    }
+
+    if (type === 'content') {
+      const newItems = [...contentItems];
+      const [draggedElement] = newItems.splice(sourceIndex, 1);
+      newItems.splice(targetIndex, 0, draggedElement);
+      setContentItems(newItems);
+    } else {
+      const newItems = [...topicItems];
+      const [draggedElement] = newItems.splice(sourceIndex, 1);
+      newItems.splice(targetIndex, 0, draggedElement);
+      setTopicItems(newItems);
+    }
+    
+    setHasChanges(true);
+    resetDragState();
+  };
+
+  const handleDragEnd = () => {
+    resetDragState();
+  };
+
+  const resetDragState = () => {
+    if (dragNode.current) {
+      dragNode.current.classList.remove('opacity-50');
+    }
+    setDraggedItem(null);
+    setDraggedOverItem(null);
+    setIsDragging(false);
+    dragNode.current = null;
+  };
+
+  // ==================== СТРЕЛКИ ЗА ПРЕМЕСТВАНЕ ====================
 
   // Преместване на съдържание нагоре
   const moveContentUp = (index) => {
@@ -59,6 +151,26 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
     if (index === contentItems.length - 1) return;
     const newItems = [...contentItems];
     [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+    setContentItems(newItems);
+    setHasChanges(true);
+  };
+
+  // Преместване на съдържание в началото
+  const moveContentToTop = (index) => {
+    if (index === 0) return;
+    const newItems = [...contentItems];
+    const [item] = newItems.splice(index, 1);
+    newItems.unshift(item);
+    setContentItems(newItems);
+    setHasChanges(true);
+  };
+
+  // Преместване на съдържание в края
+  const moveContentToBottom = (index) => {
+    if (index === contentItems.length - 1) return;
+    const newItems = [...contentItems];
+    const [item] = newItems.splice(index, 1);
+    newItems.push(item);
     setContentItems(newItems);
     setHasChanges(true);
   };
@@ -79,6 +191,33 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
     [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
     setTopicItems(newItems);
     setHasChanges(true);
+  };
+
+  // Преместване на тема в началото
+  const moveTopicToTop = (index) => {
+    if (index === 0) return;
+    const newItems = [...topicItems];
+    const [item] = newItems.splice(index, 1);
+    newItems.unshift(item);
+    setTopicItems(newItems);
+    setHasChanges(true);
+  };
+
+  // Преместване на тема в края
+  const moveTopicToBottom = (index) => {
+    if (index === topicItems.length - 1) return;
+    const newItems = [...topicItems];
+    const [item] = newItems.splice(index, 1);
+    newItems.push(item);
+    setTopicItems(newItems);
+    setHasChanges(true);
+  };
+
+  // Възстановяване на оригиналната подредба
+  const resetOrder = () => {
+    setContentItems([...originalContent]);
+    setTopicItems([...originalTopics]);
+    setHasChanges(false);
   };
 
   // Запазване на промените
@@ -118,6 +257,8 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
 
       setSuccess('Подредбата е запазена успешно');
       setHasChanges(false);
+      setOriginalContent([...contentItems]);
+      setOriginalTopics([...topicItems]);
       
       if (onUpdate) {
         onUpdate();
@@ -151,14 +292,29 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
     return item.fileType || 'Файл';
   };
 
+  // Проверка дали елементът е в зоната за пускане
+  const isDropTarget = (index, type) => {
+    return draggedOverItem && 
+           draggedOverItem.index === index && 
+           draggedOverItem.type === type &&
+           draggedItem &&
+           draggedItem.index !== index;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h3 className="text-xl font-bold text-gray-800">
-            Подреждане - {course.title}
-          </h3>
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">
+              Подреждане - {course.title}
+            </h3>
+            <p className="text-sm text-gray-500 mt-1 flex items-center">
+              <ArrowUpDown size={14} className="mr-1" />
+              Плъзгайте елементите или използвайте бутоните
+            </p>
+          </div>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -212,7 +368,7 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
         <div className="flex-1 overflow-y-auto p-4">
           {/* Content Tab */}
           {activeTab === 'content' && (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {contentItems.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Layers size={48} className="mx-auto mb-2 opacity-50" />
@@ -221,13 +377,26 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
               ) : (
                 contentItems.map((item, index) => {
                   const topic = getTopicForContent(item);
+                  const isBeingDragged = draggedItem?.type === 'content' && draggedItem?.index === index;
+                  const isDropZone = isDropTarget(index, 'content');
+                  
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index, 'content')}
+                      onDragEnter={(e) => handleDragEnter(e, index, 'content')}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, index, 'content')}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center rounded-lg p-3 transition-all duration-150 cursor-move select-none
+                        ${isBeingDragged ? 'opacity-50 bg-blue-100 border-2 border-blue-400' : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'}
+                        ${isDropZone ? 'border-2 border-blue-500 border-dashed bg-blue-50 transform scale-[1.02]' : ''}
+                      `}
                     >
                       {/* Drag Handle */}
-                      <div className="text-gray-400 mr-3 cursor-move">
+                      <div className="text-gray-400 mr-3 cursor-grab active:cursor-grabbing hover:text-gray-600">
                         <GripVertical size={20} />
                       </div>
 
@@ -262,30 +431,54 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
                       </div>
 
                       {/* Move Buttons */}
-                      <div className="flex items-center space-x-1 ml-2">
+                      <div className="flex items-center space-x-0.5 ml-2">
                         <button
-                          onClick={() => moveContentUp(index)}
+                          onClick={(e) => { e.stopPropagation(); moveContentToTop(index); }}
                           disabled={index === 0}
-                          className={`p-1.5 rounded transition-colors ${
+                          className={`p-1 rounded transition-colors ${
                             index === 0
                               ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
                           }`}
-                          title="Премести нагоре"
+                          title="В началото"
                         >
-                          <ChevronUp size={18} />
+                          <ChevronsUp size={16} />
                         </button>
                         <button
-                          onClick={() => moveContentDown(index)}
+                          onClick={(e) => { e.stopPropagation(); moveContentUp(index); }}
+                          disabled={index === 0}
+                          className={`p-1 rounded transition-colors ${
+                            index === 0
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
+                          title="Нагоре"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveContentDown(index); }}
                           disabled={index === contentItems.length - 1}
-                          className={`p-1.5 rounded transition-colors ${
+                          className={`p-1 rounded transition-colors ${
                             index === contentItems.length - 1
                               ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
                           }`}
-                          title="Премести надолу"
+                          title="Надолу"
                         >
-                          <ChevronDown size={18} />
+                          <ChevronDown size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveContentToBottom(index); }}
+                          disabled={index === contentItems.length - 1}
+                          className={`p-1 rounded transition-colors ${
+                            index === contentItems.length - 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                          }`}
+                          title="В края"
+                        >
+                          <ChevronsDown size={16} />
                         </button>
                       </div>
                     </div>
@@ -297,7 +490,7 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
 
           {/* Topics Tab */}
           {activeTab === 'topics' && (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {topicItems.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <BookOpen size={48} className="mx-auto mb-2 opacity-50" />
@@ -307,14 +500,26 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
                 topicItems.map((topic, index) => {
                   // Брой съдържание в темата
                   const contentCount = contentItems.filter(c => c.topicId === topic.id).length;
+                  const isBeingDragged = draggedItem?.type === 'topics' && draggedItem?.index === index;
+                  const isDropZone = isDropTarget(index, 'topics');
                   
                   return (
                     <div
                       key={topic.id}
-                      className="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-colors"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index, 'topics')}
+                      onDragEnter={(e) => handleDragEnter(e, index, 'topics')}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, index, 'topics')}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center rounded-lg p-3 transition-all duration-150 cursor-move select-none
+                        ${isBeingDragged ? 'opacity-50 bg-purple-100 border-2 border-purple-400' : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'}
+                        ${isDropZone ? 'border-2 border-purple-500 border-dashed bg-purple-50 transform scale-[1.02]' : ''}
+                      `}
                     >
                       {/* Drag Handle */}
-                      <div className="text-gray-400 mr-3 cursor-move">
+                      <div className="text-gray-400 mr-3 cursor-grab active:cursor-grabbing hover:text-gray-600">
                         <GripVertical size={20} />
                       </div>
 
@@ -340,30 +545,54 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
                       </div>
 
                       {/* Move Buttons */}
-                      <div className="flex items-center space-x-1 ml-2">
+                      <div className="flex items-center space-x-0.5 ml-2">
                         <button
-                          onClick={() => moveTopicUp(index)}
+                          onClick={(e) => { e.stopPropagation(); moveTopicToTop(index); }}
                           disabled={index === 0}
-                          className={`p-1.5 rounded transition-colors ${
+                          className={`p-1 rounded transition-colors ${
                             index === 0
                               ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+                              : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
                           }`}
-                          title="Премести нагоре"
+                          title="В началото"
                         >
-                          <ChevronUp size={18} />
+                          <ChevronsUp size={16} />
                         </button>
                         <button
-                          onClick={() => moveTopicDown(index)}
+                          onClick={(e) => { e.stopPropagation(); moveTopicUp(index); }}
+                          disabled={index === 0}
+                          className={`p-1 rounded transition-colors ${
+                            index === 0
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
+                          }`}
+                          title="Нагоре"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveTopicDown(index); }}
                           disabled={index === topicItems.length - 1}
-                          className={`p-1.5 rounded transition-colors ${
+                          className={`p-1 rounded transition-colors ${
                             index === topicItems.length - 1
                               ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+                              : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
                           }`}
-                          title="Премести надолу"
+                          title="Надолу"
                         >
-                          <ChevronDown size={18} />
+                          <ChevronDown size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveTopicToBottom(index); }}
+                          disabled={index === topicItems.length - 1}
+                          className={`p-1 rounded transition-colors ${
+                            index === topicItems.length - 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
+                          }`}
+                          title="В края"
+                        >
+                          <ChevronsDown size={16} />
                         </button>
                       </div>
                     </div>
@@ -376,12 +605,23 @@ const ContentOrderManager = ({ course, onClose, onUpdate, adminEmail }) => {
 
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
-          <div className="text-sm text-gray-500">
-            {hasChanges ? (
-              <span className="text-orange-600 font-medium">● Има незапазени промени</span>
-            ) : (
-              <span>Използвайте стрелките за да преместите елементите</span>
+          <div className="flex items-center space-x-4">
+            {hasChanges && (
+              <button
+                onClick={resetOrder}
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center transition-colors"
+              >
+                <RotateCcw size={14} className="mr-1" />
+                Върни оригинала
+              </button>
             )}
+            <div className="text-sm text-gray-500">
+              {hasChanges ? (
+                <span className="text-orange-600 font-medium">● Има незапазени промени</span>
+              ) : (
+                <span className="hidden sm:inline">Плъзгайте или използвайте бутоните</span>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center space-x-3">
