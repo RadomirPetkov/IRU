@@ -1,4 +1,4 @@
-// src/firebaseAuth.js - Production готова версия
+// src/firebaseAuth.js - С функция за смяна на парола
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -6,6 +6,9 @@ import {
   signOut,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from "firebase/auth";
 
 // Сигурна Firebase конфигурация
@@ -130,6 +133,68 @@ export const createUser = async (email, password) => {
         break;
       default:
         errorMessage = "Възникна грешка при създаване на акаунт";
+    }
+
+    return { success: false, error: errorMessage };
+  }
+};
+
+// Смяна на парола
+export const changePassword = async (currentPassword, newPassword) => {
+  try {
+    const user = auth.currentUser;
+    
+    if (!user) {
+      return { success: false, error: "Не сте влезли в системата" };
+    }
+
+    if (!currentPassword || !newPassword) {
+      return { success: false, error: "Моля въведете текущата и новата парола" };
+    }
+
+    if (newPassword.length < 6) {
+      return { success: false, error: "Новата парола трябва да е поне 6 символа" };
+    }
+
+    // Първо трябва да се удостоверим отново с текущата парола
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    
+    try {
+      await reauthenticateWithCredential(user, credential);
+    } catch (reauthError) {
+      if (reauthError.code === "auth/wrong-password" || 
+          reauthError.code === "auth/invalid-credential") {
+        return { success: false, error: "Текущата парола е грешна" };
+      }
+      throw reauthError;
+    }
+
+    // След успешно удостоверяване, сменяме паролата
+    await updatePassword(user, newPassword);
+    
+    return { success: true };
+  } catch (error) {
+    let errorMessage = "Грешка при смяна на паролата";
+
+    switch (error.code) {
+      case "auth/wrong-password":
+      case "auth/invalid-credential":
+        errorMessage = "Текущата парола е грешна";
+        break;
+      case "auth/weak-password":
+        errorMessage = "Новата парола е прекалено слаба";
+        break;
+      case "auth/requires-recent-login":
+        errorMessage = "Моля излезте и влезте отново, след което опитайте пак";
+        break;
+      case "auth/too-many-requests":
+        errorMessage = "Прекалено много опити. Опитайте отново по-късно";
+        break;
+      case "auth/network-request-failed":
+        errorMessage = "Проблем с мрежата. Проверете интернет връзката";
+        break;
+      default:
+        errorMessage = "Възникна грешка при смяна на паролата";
     }
 
     return { success: false, error: errorMessage };

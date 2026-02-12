@@ -1,10 +1,12 @@
+// src/components/UserProfile.jsx - С функционалност за смяна на парола
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { logoutUser } from "../firebaseAuth";
-import { User, LogOut, ChevronDown, Settings } from "lucide-react";
+import { logoutUser, changePassword } from "../firebaseAuth";
+import { User, LogOut, ChevronDown, Key, X, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 
 const UserProfile = ({ user, userProfile, onLogout }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const buttonRef = useRef(null);
   const [dropdownStyle, setDropdownStyle] = useState({});
 
@@ -28,12 +30,18 @@ const UserProfile = ({ user, userProfile, onLogout }) => {
     setIsDropdownOpen(false);
   };
 
+  const handleOpenPasswordModal = () => {
+    setIsDropdownOpen(false);
+    setShowPasswordModal(true);
+  };
+
   const getUserDisplayName = () => {
-    // Първо проверяваме дали има displayName в user обекта
+    if (userProfile?.displayName) {
+      return userProfile.displayName;
+    }
     if (user?.displayName) {
       return user.displayName;
     }
-    // Ако няма displayName, използваме email
     if (user?.email) {
       return user.email.split("@")[0];
     }
@@ -111,13 +119,13 @@ const UserProfile = ({ user, userProfile, onLogout }) => {
             </div>
 
             <div className="p-2">
-              {/* <button
-                onClick={() => setIsDropdownOpen(false)}
+              <button
+                onClick={handleOpenPasswordModal}
                 className="w-full flex items-center space-x-3 px-3 py-2 text-left text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
               >
-                <Settings size={16} />
-                <span>Настройки</span>
-              </button> */}
+                <Key size={16} />
+                <span>Смяна на парола</span>
+              </button>
 
               <button
                 onClick={handleLogout}
@@ -143,7 +151,235 @@ const UserProfile = ({ user, userProfile, onLogout }) => {
           />,
           document.body
         )}
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <PasswordChangeModal onClose={() => setShowPasswordModal(false)} />
+      )}
     </div>
+  );
+};
+
+// Компонент за смяна на парола
+const PasswordChangeModal = ({ onClose }) => {
+  const [formData, setFormData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    setError("");
+  };
+
+  const toggleShowPassword = (field) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
+  const validateForm = () => {
+    if (!formData.currentPassword) {
+      return "Моля въведете текущата си парола";
+    }
+    if (!formData.newPassword) {
+      return "Моля въведете нова парола";
+    }
+    if (formData.newPassword.length < 6) {
+      return "Новата парола трябва да е поне 6 символа";
+    }
+    if (formData.newPassword !== formData.confirmPassword) {
+      return "Новите пароли не съвпадат";
+    }
+    if (formData.currentPassword === formData.newPassword) {
+      return "Новата парола трябва да е различна от текущата";
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    const result = await changePassword(formData.currentPassword, formData.newPassword);
+
+    if (result.success) {
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } else {
+      setError(result.error);
+    }
+
+    setLoading(false);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-blue-700">
+          <div className="flex items-center text-white">
+            <Key size={24} className="mr-3" />
+            <h3 className="text-lg font-bold">Смяна на парола</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-200 transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {success ? (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle size={32} className="text-green-500" />
+              </div>
+              <h4 className="text-lg font-medium text-gray-800 mb-2">
+                Паролата е сменена успешно!
+              </h4>
+              <p className="text-gray-600">
+                Прозорецът ще се затвори автоматично...
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Current Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Текуща парола
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswords.current ? "text" : "password"}
+                    name="currentPassword"
+                    value={formData.currentPassword}
+                    onChange={handleInputChange}
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                    placeholder="Въведете текущата парола"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleShowPassword('current')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Нова парола
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswords.new ? "text" : "password"}
+                    name="newPassword"
+                    value={formData.newPassword}
+                    onChange={handleInputChange}
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                    placeholder="Въведете нова парола (мин. 6 символа)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleShowPassword('new')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Потвърдете новата парола
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswords.confirm ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                    placeholder="Повторете новата парола"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleShowPassword('confirm')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                  <AlertCircle size={18} className="mr-2 flex-shrink-0" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                >
+                  Отказ
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-blue-700 text-white rounded-lg hover:from-purple-700 hover:to-blue-800 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Смяна...
+                    </span>
+                  ) : (
+                    "Смени паролата"
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 };
 
