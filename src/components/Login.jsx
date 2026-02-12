@@ -1,5 +1,5 @@
-// src/components/Login.jsx - Почистена версия без демо информация
-import React, { useState } from "react";
+// src/components/Login.jsx - Поправена версия без memory leak
+import React, { useState, useRef, useEffect } from "react";
 import { loginUser } from "../firebaseAuth";
 import { Eye, EyeOff, Lock, Mail, LogIn, X } from "lucide-react";
 
@@ -11,6 +11,17 @@ const Login = ({ onClose, onLoginSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // Ref за проверка дали компонентът е mounted
+  const isMountedRef = useRef(true);
+
+  // Cleanup при unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -30,14 +41,16 @@ const Login = ({ onClose, onLoginSuccess }) => {
     const normalizedEmail = formData.email.trim().toLowerCase();
     const result = await loginUser(normalizedEmail, formData.password);
 
+    // Проверка дали компонентът все още е mounted
+    if (!isMountedRef.current) return;
+
     if (result.success) {
       onLoginSuccess && onLoginSuccess(result.user);
       onClose && onClose();
     } else {
       setError("Невалиден имейл или парола");
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

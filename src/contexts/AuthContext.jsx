@@ -1,6 +1,6 @@
-// src/contexts/AuthContext.jsx - Обновен с по-добро зареждане
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChange } from "../firebaseAuth";
+// src/contexts/AuthContext.jsx - Поправена версия за правилен logout/login цикъл
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { onAuthStateChange, logoutUser as firebaseSignOut } from "../firebaseAuth";
 import {
   initializeUser,
   getFullUserProfile,
@@ -23,10 +23,14 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   // Инициализация на потребител при влизане
-  const initUser = async (firebaseUser) => {
-    if (!firebaseUser) return;
+  const initUser = useCallback(async (firebaseUser) => {
+    if (!firebaseUser) {
+      setUserProfile(null);
+      return;
+    }
 
     setInitializing(true);
     try {
@@ -39,22 +43,17 @@ export const AuthProvider = ({ children }) => {
       if (profileResult.success) {
         setUserProfile(profileResult.data);
       } else {
-        console.error(
-          "❌ Грешка при зареждане на профил:",
-          profileResult.error
-        );
         setUserProfile(null);
       }
     } catch (error) {
-      console.error("❌ Грешка при инициализация на потребител:", error);
       setUserProfile(null);
     } finally {
       setInitializing(false);
     }
-  };
+  }, []);
 
   // Функция за форсирано презареждане на профила
-  const forceRefresh = async () => {
+  const forceRefresh = useCallback(async () => {
     if (!user?.email) {
       return;
     }
@@ -65,47 +64,61 @@ export const AuthProvider = ({ children }) => {
       const profileResult = await getFullUserProfile(user.email);
       if (profileResult.success) {
         setUserProfile(profileResult.data);
-      } else {
-        console.error(
-          "❌ Грешка при презареждане на профил:",
-          profileResult.error
-        );
       }
     } catch (error) {
-      console.error("❌ Грешка при презареждане:", error);
+      // Silent fail
     } finally {
       setInitializing(false);
     }
-  };
+  }, [user?.email]);
 
   // Функция за излизане
-  const logout = async () => {
+  const logout = useCallback(async () => {
+    // Приключваме сесията в Firestore
     if (user?.email) {
-      await logoutUserService(user.email);
+      try {
+        await logoutUserService(user.email);
+      } catch (error) {
+        // Silent fail
+      }
     }
-    setUser(null);
+    
+    // Изчистваме локалния state
     setUserProfile(null);
-  };
+    setUser(null);
+    setAuthReady(false);
+    
+    // Firebase Auth signOut
+    try {
+      await firebaseSignOut();
+    } catch (error) {
+      // Silent fail
+    }
+  }, [user?.email]);
 
   // Проследяване на Firebase Auth състоянието
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
-      setUser(firebaseUser);
-
       if (firebaseUser) {
+        setUser(firebaseUser);
         await initUser(firebaseUser);
+        setAuthReady(true);
       } else {
+        setUser(null);
         setUserProfile(null);
+        setAuthReady(true);
       }
 
       setLoading(false);
     });
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      unsubscribe();
+    };
+  }, [initUser]);
 
   // Функция за обновяване на профила
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (!user?.email) return;
 
     try {
@@ -114,52 +127,42 @@ export const AuthProvider = ({ children }) => {
         setUserProfile(profileResult.data);
       }
     } catch (error) {
-      console.error("❌ Грешка при обновяване на профил:", error);
+      // Silent fail
     }
-  };
+  }, [user?.email]);
 
   // Проверка за достъп до курс
-  const hasAccessToCourse = (courseId) => {
-    if (
-      !userProfile ||
-      !userProfile.permissions ||
-      !userProfile.permissions.courses
-    ) {
+  const hasAccessToCourse = useCallback((courseId) => {
+    if (!userProfile || !userProfile.permissions || !userProfile.permissions.courses) {
       return false;
     }
-
-    const hasAccess = userProfile.permissions.courses.includes(courseId);
-    return hasAccess;
-  };
+    return userProfile.permissions.courses.includes(courseId);
+  }, [userProfile]);
 
   // Проверка за права
-  const hasPermission = (permission) => {
+  const hasPermission = useCallback((permission) => {
     if (!userProfile || !userProfile.roleInfo) {
       return false;
     }
-    const hasAccess = userProfile.roleInfo.permissions.includes(permission);
-    return hasAccess;
-  };
+    return userProfile.roleInfo.permissions.includes(permission);
+  }, [userProfile]);
 
   // Получаване на роля
-  const getUserRole = () => {
-    const role = userProfile?.role || "guest";
-    return role;
-  };
+  const getUserRole = useCallback(() => {
+    return userProfile?.role || "guest";
+  }, [userProfile]);
 
   // Получаване на display name
-  const getDisplayName = () => {
-    const name =
-      userProfile?.displayName || user?.email?.split("@")[0] || "Потребител";
-    return name;
-  };
+  const getDisplayName = useCallback(() => {
+    return userProfile?.displayName || user?.email?.split("@")[0] || "Потребител";
+  }, [userProfile, user?.email]);
 
   const value = {
     // Състояние
     user,
     userProfile,
     loading: loading || initializing,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && authReady,
 
     // Функции
     logout,
@@ -180,9 +183,21 @@ export const AuthProvider = ({ children }) => {
     lastLogin: userProfile?.lastLogin,
   };
 
+  // Показваме loading докато auth не е готов
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Зареждане...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

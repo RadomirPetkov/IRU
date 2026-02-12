@@ -10,6 +10,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import JsonData from "./data/data.json";
 import SmoothScroll from "smooth-scroll";
 import "./App.css";
+import AutoLogoutProvider from "./components/AutoLogoutProvider";
 
 export const scroll = new SmoothScroll('a[href*="#"]', {
   speed: 1000,
@@ -25,29 +26,22 @@ const App = () => {
 
   return (
     <AuthProvider>
-      <Router>
-        <div>
-          <Navigation />
-          <Routes>
-            <Route 
-              path="/" 
-              element={<HomePage data={landingPageData} />} 
-            />
-            <Route 
-              path="/courses" 
-              element={<CoursesPage />} 
-            />
-            <Route 
-              path="/course/:courseId" 
-              element={<EnhancedCourseDetailPage />} 
-            />
-            <Route 
-              path="/admin" 
-              element={<AdminDashboard />} 
-            />
-          </Routes>
-        </div>
-      </Router>
+      <AutoLogoutProvider>
+        <Router>
+          <div>
+            <Navigation />
+            <Routes>
+              <Route path="/" element={<HomePage data={landingPageData} />} />
+              <Route path="/courses" element={<CoursesPage />} />
+              <Route
+                path="/course/:courseId"
+                element={<EnhancedCourseDetailPage />}
+              />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Routes>
+          </div>
+        </Router>
+      </AutoLogoutProvider>
     </AuthProvider>
   );
 };
