@@ -15,6 +15,7 @@ import {
   arrayRemove,
   increment,
   serverTimestamp,
+  Timestamp,
   orderBy,
   limit,
 } from "firebase/firestore";
@@ -727,6 +728,57 @@ export const getActivityStats = async (userEmail, days = 30) => {
   } catch (error) {
     console.error("Error getting activity stats:", error);
     return { success: false, error: "Грешка при получаване на статистики" };
+  }
+};
+
+// Обновяване на профилна информация от администратор
+export const updateUserProfileInfo = async (userEmail, { displayName, joinDate }) => {
+  try {
+    const normalizedEmail = normalizeEmail(userEmail);
+    const profileRef = doc(db, "users", normalizedEmail, "profile", "info");
+
+    const updates = {};
+    if (displayName !== undefined) updates.displayName = displayName;
+    if (joinDate !== undefined) {
+      updates.joinDate = joinDate instanceof Date
+        ? Timestamp.fromDate(joinDate)
+        : joinDate;
+    }
+
+    await updateDoc(profileRef, updates);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user profile info:", error);
+    return { success: false, error: "Грешка при обновяване на профила" };
+  }
+};
+
+// Добавяне на ръчна активност от администратор
+export const addManualActivity = async (userEmail, { date, durationMinutes, description, coursesAccessed }) => {
+  try {
+    const normalizedEmail = normalizeEmail(userEmail);
+    const sessionId = `manual_${Date.now()}`;
+    const sessionRef = doc(db, "users", normalizedEmail, "activity", sessionId);
+
+    const loginAt = date instanceof Date ? Timestamp.fromDate(date) : Timestamp.fromDate(new Date(date));
+    const durationSeconds = (durationMinutes || 0) * 60;
+    const logoutDate = new Date(loginAt.toDate().getTime() + durationSeconds * 1000);
+
+    await setDoc(sessionRef, {
+      loginAt,
+      logoutAt: Timestamp.fromDate(logoutDate),
+      duration: durationSeconds,
+      videosWatched: [],
+      coursesAccessed: coursesAccessed || [],
+      completedContent: [],
+      description: description || "",
+      isManual: true,
+    });
+
+    return { success: true, sessionId };
+  } catch (error) {
+    console.error("Error adding manual activity:", error);
+    return { success: false, error: "Грешка при добавяне на активност" };
   }
 };
 

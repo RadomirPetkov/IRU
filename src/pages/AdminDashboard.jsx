@@ -29,6 +29,8 @@ import {
   getUserDetailedStats,
   addCourseAccessToUser,
   removeCourseAccessFromUser,
+  adminUpdateUserInfo,
+  adminAddActivity,
   ROLES,
   ROLE_DEFINITIONS,
 } from "../services/userService";
@@ -49,6 +51,12 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [error, setError] = useState(null);
   const [userSearch, setUserSearch] = useState("");
+  const [isEditingUser, setIsEditingUser] = useState(false);
+  const [editForm, setEditForm] = useState({ displayName: "", joinDate: "", joinTime: "00:00" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [showActivityForm, setShowActivityForm] = useState(false);
+  const [activityForm, setActivityForm] = useState({ date: "", time: "00:00", durationMinutes: "", description: "", coursesAccessed: [] });
+  const [activitySaving, setActivitySaving] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user?.email) {
@@ -131,6 +139,51 @@ const AdminDashboard = () => {
   const handleUserSelect = (userData) => {
     setSelectedUser(userData);
     loadUserStats(userData.email);
+    setIsEditingUser(false);
+    setShowActivityForm(false);
+    const ts = userData.joinDate;
+    let joinDateStr = "";
+    let joinTimeStr = "00:00";
+    if (ts) {
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      joinDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      joinTimeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+    setEditForm({ displayName: userData.displayName || "", joinDate: joinDateStr, joinTime: joinTimeStr });
+    setActivityForm({ date: "", durationMinutes: "", description: "", coursesAccessed: [] });
+  };
+
+  const handleSaveUserInfo = async () => {
+    setEditSaving(true);
+    const joinDate = editForm.joinDate ? new Date(`${editForm.joinDate}T${editForm.joinTime || "00:00"}`) : undefined;
+    const result = await adminUpdateUserInfo(user?.email, selectedUser.email, {
+      displayName: editForm.displayName,
+      joinDate,
+    });
+    if (result.success) {
+      const updated = { ...selectedUser, displayName: editForm.displayName, joinDate: joinDate || selectedUser.joinDate };
+      setSelectedUser(updated);
+      setUsers((prev) => prev.map((u) => u.email === updated.email ? { ...u, displayName: updated.displayName, joinDate: updated.joinDate } : u));
+      setIsEditingUser(false);
+    }
+    setEditSaving(false);
+  };
+
+  const handleAddActivity = async () => {
+    if (!activityForm.date) return;
+    setActivitySaving(true);
+    const result = await adminAddActivity(user?.email, selectedUser.email, {
+      date: new Date(`${activityForm.date}T${activityForm.time || "00:00"}`),
+      durationMinutes: Number(activityForm.durationMinutes) || 0,
+      description: activityForm.description,
+      coursesAccessed: activityForm.coursesAccessed,
+    });
+    if (result.success) {
+      setShowActivityForm(false);
+      setActivityForm({ date: "", time: "00:00", durationMinutes: "", description: "", coursesAccessed: [] });
+      loadUserStats(selectedUser.email);
+    }
+    setActivitySaving(false);
   };
 
   const handleAddCourse = async (userEmail, courseId) => {
@@ -498,7 +551,7 @@ const AdminDashboard = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-[640px] overflow-y-auto">
                       {users
                         .filter((u) => {
                           const q = userSearch.toLowerCase();
@@ -563,31 +616,92 @@ const AdminDashboard = () => {
                   <div className="space-y-6">
                     {/* User Info */}
                     <div className="bg-white rounded-xl shadow-lg p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-800">
-                            {selectedUser.displayName}
-                          </h2>
-                          <p className="text-gray-600">{selectedUser.email}</p>
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${selectedUser.roleInfo?.color} mt-2`}
-                          >
-                            {selectedUser.roleInfo?.name}
-                          </span>
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="flex-1">
+                          {isEditingUser ? (
+                            <div className="space-y-3 mr-4">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Имена</label>
+                                <input
+                                  type="text"
+                                  value={editForm.displayName}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Дата на регистрация</label>
+                                <input
+                                  type="date"
+                                  value={editForm.joinDate}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, joinDate: e.target.value }))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Час на регистрация (ЧЧ:ММ)</label>
+                                <input
+                                  type="text"
+                                  value={editForm.joinTime}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9:]/g, "").slice(0, 5);
+                                    setEditForm((f) => ({ ...f, joinTime: val }));
+                                  }}
+                                  placeholder="14:30"
+                                  maxLength={5}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500">{selectedUser.email}</p>
+                              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${selectedUser.roleInfo?.color}`}>
+                                {selectedUser.roleInfo?.name}
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <h2 className="text-2xl font-bold text-gray-800">
+                                {selectedUser.displayName}
+                              </h2>
+                              <p className="text-gray-600">{selectedUser.email}</p>
+                              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${selectedUser.roleInfo?.color} mt-2`}>
+                                {selectedUser.roleInfo?.name}
+                              </span>
+                            </>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-500">
-                            Регистрация:
-                          </div>
-                          <div className="font-medium">
-                            {formatDate(selectedUser.joinDate)}
-                          </div>
-                          <div className="text-sm text-gray-500 mt-2">
-                            Последен вход:
-                          </div>
-                          <div className="font-medium">
-                            {formatDate(selectedUser.lastLogin)}
-                          </div>
+                        <div className="flex flex-col items-end gap-2">
+                          {isEditingUser ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleSaveUserInfo}
+                                disabled={editSaving}
+                                className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                              >
+                                {editSaving ? "Запазване..." : "Запази"}
+                              </button>
+                              <button
+                                onClick={() => setIsEditingUser(false)}
+                                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
+                              >
+                                Отказ
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setIsEditingUser(true)}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                              Редактирай
+                            </button>
+                          )}
+                          {!isEditingUser && (
+                            <div className="text-right">
+                              <div className="text-sm text-gray-500">Регистрация:</div>
+                              <div className="font-medium">{formatDate(selectedUser.joinDate)}</div>
+                              <div className="text-sm text-gray-500 mt-2">Последен вход:</div>
+                              <div className="font-medium">{formatDate(selectedUser.lastLogin)}</div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -678,18 +792,18 @@ const AdminDashboard = () => {
                           Зареждане на статистики...
                         </p>
                       </div>
-                    ) : userStats ? (
-                      <UserActivityStats 
-                        userStats={userStats} 
-                        formatDate={formatDate}
-                      />
                     ) : (
-                      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                        <Eye className="text-gray-400 mx-auto mb-4" size={48} />
-                        <p className="text-gray-600">
-                          Няма статистики за този потребител
-                        </p>
-                      </div>
+                      <UserActivityStats
+                        userStats={userStats}
+                        formatDate={formatDate}
+                        showActivityForm={showActivityForm}
+                        setShowActivityForm={setShowActivityForm}
+                        activityForm={activityForm}
+                        setActivityForm={setActivityForm}
+                        activitySaving={activitySaving}
+                        onAddActivity={handleAddActivity}
+                        coursesData={coursesData}
+                      />
                     )}
                   </div>
                 ) : (
@@ -775,8 +889,96 @@ const AdminDashboard = () => {
   );
 };
 
+const ActivityForm = ({ activityForm, setActivityForm, activitySaving, onAddActivity, onClose, coursesData }) => (
+  <div className="space-y-3 border-t pt-4 mb-6">
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Дата *</label>
+        <input
+          type="date"
+          value={activityForm.date}
+          onChange={(e) => setActivityForm((f) => ({ ...f, date: e.target.value }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Час (ЧЧ:ММ)</label>
+        <input
+          type="text"
+          value={activityForm.time}
+          onChange={(e) => {
+            const val = e.target.value.replace(/[^0-9:]/g, "").slice(0, 5);
+            setActivityForm((f) => ({ ...f, time: val }));
+          }}
+          placeholder="14:30"
+          maxLength={5}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+    </div>
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Продължителност (минути)</label>
+      <input
+        type="number"
+        min="0"
+        value={activityForm.durationMinutes}
+        onChange={(e) => setActivityForm((f) => ({ ...f, durationMinutes: e.target.value }))}
+        placeholder="0"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">Бележка</label>
+      <input
+        type="text"
+        value={activityForm.description}
+        onChange={(e) => setActivityForm((f) => ({ ...f, description: e.target.value }))}
+        placeholder="Описание на активността..."
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <div>
+      <label className="block text-xs text-gray-500 mb-2">Курсове (по избор)</label>
+      <div className="flex flex-wrap gap-2">
+        {coursesData.map((course) => {
+          const selected = activityForm.coursesAccessed.includes(course.id);
+          return (
+            <button
+              key={course.id}
+              type="button"
+              onClick={() => setActivityForm((f) => ({
+                ...f,
+                coursesAccessed: selected
+                  ? f.coursesAccessed.filter((id) => id !== course.id)
+                  : [...f.coursesAccessed, course.id],
+              }))}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                selected ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {course.title}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+    <div className="flex gap-2 pt-1">
+      <button
+        onClick={onAddActivity}
+        disabled={activitySaving || !activityForm.date || !/^\d{2}:\d{2}$/.test(activityForm.time)}
+        className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+      >
+        {activitySaving ? "Запазване..." : "Добави"}
+      </button>
+      <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors">
+        Отказ
+      </button>
+    </div>
+  </div>
+);
+
 // Компонент за статистики на активността на потребител
-const UserActivityStats = ({ userStats, formatDate }) => {
+const UserActivityStats = ({ userStats, formatDate, showActivityForm, setShowActivityForm, activityForm, setActivityForm, activitySaving, onAddActivity, coursesData }) => {
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [expandedSession, setExpandedSession] = useState(null);
 
@@ -828,12 +1030,49 @@ const UserActivityStats = ({ userStats, formatDate }) => {
   const sessions = userStats.sessions || [];
   const displayedSessions = showAllSessions ? sessions : sessions.slice(0, 5);
 
+  if (!userStats) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-800 flex items-center">
+            <TrendingUp className="mr-2" size={24} />
+            Статистики за активност
+          </h3>
+          <button
+            onClick={() => setShowActivityForm((v) => !v)}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+            title="Добави активност"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        {showActivityForm && <ActivityForm activityForm={activityForm} setActivityForm={setActivityForm} activitySaving={activitySaving} onAddActivity={onAddActivity} onClose={() => setShowActivityForm(false)} coursesData={coursesData} />}
+        {!showActivityForm && (
+          <div className="text-center py-8">
+            <Eye className="text-gray-400 mx-auto mb-4" size={48} />
+            <p className="text-gray-600">Няма статистики за този потребител</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-        <TrendingUp className="mr-2" size={24} />
-        Статистики за активност
-      </h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold text-gray-800 flex items-center">
+          <TrendingUp className="mr-2" size={24} />
+          Статистики за активност
+        </h3>
+        <button
+          onClick={() => setShowActivityForm((v) => !v)}
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+          title="Добави активност"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+      {showActivityForm && <ActivityForm activityForm={activityForm} setActivityForm={setActivityForm} activitySaving={activitySaving} onAddActivity={onAddActivity} onClose={() => setShowActivityForm(false)} coursesData={coursesData} />}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

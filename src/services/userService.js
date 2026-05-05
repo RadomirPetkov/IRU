@@ -15,6 +15,8 @@ import {
   endUserSession,
   getActivityStats,
   getAllUsers,
+  updateUserProfileInfo,
+  addManualActivity,
 } from "../firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
@@ -324,6 +326,46 @@ export const getAdminUsersList = async (adminEmail) => {
   } catch (error) {
     console.error("Error getting admin users list:", error);
     return { success: false, error: "Грешка при получаване на потребители" };
+  }
+};
+
+/**
+ * Обновяване на профилна информация на потребител (само за админи)
+ */
+export const adminUpdateUserInfo = async (adminEmail, targetEmail, { displayName, joinDate }) => {
+  try {
+    const normalizedAdmin = normalizeEmail(adminEmail);
+    const normalizedTarget = normalizeEmail(targetEmail);
+
+    const adminProfile = await getUserProfile(normalizedAdmin);
+    if (!adminProfile.success || !hasPermission(adminProfile.data, "manage_users")) {
+      return { success: false, error: "Няма права за тази операция" };
+    }
+
+    return await updateUserProfileInfo(normalizedTarget, { displayName, joinDate });
+  } catch (error) {
+    console.error("Error updating user info:", error);
+    return { success: false, error: "Грешка при обновяване на потребителя" };
+  }
+};
+
+/**
+ * Добавяне на ръчна активност за потребител (само за админи)
+ */
+export const adminAddActivity = async (adminEmail, targetEmail, activityData) => {
+  try {
+    const normalizedAdmin = normalizeEmail(adminEmail);
+    const normalizedTarget = normalizeEmail(targetEmail);
+
+    const adminProfile = await getUserProfile(normalizedAdmin);
+    if (!adminProfile.success || !hasPermission(adminProfile.data, "manage_users")) {
+      return { success: false, error: "Няма права за тази операция" };
+    }
+
+    return await addManualActivity(normalizedTarget, activityData);
+  } catch (error) {
+    console.error("Error adding activity:", error);
+    return { success: false, error: "Грешка при добавяне на активност" };
   }
 };
 
