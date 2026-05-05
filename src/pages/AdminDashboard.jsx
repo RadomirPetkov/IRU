@@ -48,6 +48,7 @@ const AdminDashboard = () => {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [error, setError] = useState(null);
+  const [userSearch, setUserSearch] = useState("");
 
   useEffect(() => {
     if (isAuthenticated && user?.email) {
@@ -467,10 +468,17 @@ const AdminDashboard = () => {
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                   <div className="p-6 bg-gray-50 border-b">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center mb-3">
                       <Users className="mr-2" size={24} />
                       Потребители ({users.length})
                     </h2>
+                    <input
+                      type="text"
+                      placeholder="Търси по име или имейл..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
 
                   {users.length === 0 ? (
@@ -491,7 +499,15 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     <div className="max-h-96 overflow-y-auto">
-                      {users.map((userData) => {
+                      {users
+                        .filter((u) => {
+                          const q = userSearch.toLowerCase();
+                          return (
+                            u.displayName?.toLowerCase().includes(q) ||
+                            u.email?.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((userData) => {
                         const roleInfo =
                           ROLE_DEFINITIONS[userData.role] ||
                           ROLE_DEFINITIONS[ROLES.GUEST];
