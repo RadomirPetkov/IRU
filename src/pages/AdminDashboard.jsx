@@ -52,7 +52,7 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [userSearch, setUserSearch] = useState("");
   const [isEditingUser, setIsEditingUser] = useState(false);
-  const [editForm, setEditForm] = useState({ displayName: "", joinDate: "", joinTime: "00:00" });
+  const [editForm, setEditForm] = useState({ displayName: "", joinDate: "", joinTime: "00:00", lastLoginDate: "", lastLoginTime: "00:00" });
   const [editSaving, setEditSaving] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [activityForm, setActivityForm] = useState({ date: "", time: "00:00", durationMinutes: "", description: "", coursesAccessed: [] });
@@ -149,19 +149,29 @@ const AdminDashboard = () => {
       joinDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       joinTimeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     }
-    setEditForm({ displayName: userData.displayName || "", joinDate: joinDateStr, joinTime: joinTimeStr });
+    const ll = userData.lastLogin;
+    let lastLoginDateStr = "";
+    let lastLoginTimeStr = "00:00";
+    if (ll) {
+      const d = ll.toDate ? ll.toDate() : new Date(ll);
+      lastLoginDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      lastLoginTimeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+    setEditForm({ displayName: userData.displayName || "", joinDate: joinDateStr, joinTime: joinTimeStr, lastLoginDate: lastLoginDateStr, lastLoginTime: lastLoginTimeStr });
     setActivityForm({ date: "", durationMinutes: "", description: "", coursesAccessed: [] });
   };
 
   const handleSaveUserInfo = async () => {
     setEditSaving(true);
     const joinDate = editForm.joinDate ? new Date(`${editForm.joinDate}T${editForm.joinTime || "00:00"}`) : undefined;
+    const lastLogin = editForm.lastLoginDate ? new Date(`${editForm.lastLoginDate}T${editForm.lastLoginTime || "00:00"}`) : undefined;
     const result = await adminUpdateUserInfo(user?.email, selectedUser.email, {
       displayName: editForm.displayName,
       joinDate,
+      lastLogin,
     });
     if (result.success) {
-      const updated = { ...selectedUser, displayName: editForm.displayName, joinDate: joinDate || selectedUser.joinDate };
+      const updated = { ...selectedUser, displayName: editForm.displayName, joinDate: joinDate || selectedUser.joinDate, lastLogin: lastLogin || selectedUser.lastLogin };
       setSelectedUser(updated);
       setUsers((prev) => prev.map((u) => u.email === updated.email ? { ...u, displayName: updated.displayName, joinDate: updated.joinDate } : u));
       setIsEditingUser(false);
@@ -646,6 +656,29 @@ const AdminDashboard = () => {
                                   onChange={(e) => {
                                     const val = e.target.value.replace(/[^0-9:]/g, "").slice(0, 5);
                                     setEditForm((f) => ({ ...f, joinTime: val }));
+                                  }}
+                                  placeholder="14:30"
+                                  maxLength={5}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Последен вход — дата</label>
+                                <input
+                                  type="date"
+                                  value={editForm.lastLoginDate}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, lastLoginDate: e.target.value }))}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Последен вход — час (ЧЧ:ММ)</label>
+                                <input
+                                  type="text"
+                                  value={editForm.lastLoginTime}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9:]/g, "").slice(0, 5);
+                                    setEditForm((f) => ({ ...f, lastLoginTime: val }));
                                   }}
                                   placeholder="14:30"
                                   maxLength={5}

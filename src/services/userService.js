@@ -332,7 +332,7 @@ export const getAdminUsersList = async (adminEmail) => {
 /**
  * Обновяване на профилна информация на потребител (само за админи)
  */
-export const adminUpdateUserInfo = async (adminEmail, targetEmail, { displayName, joinDate }) => {
+export const adminUpdateUserInfo = async (adminEmail, targetEmail, { displayName, joinDate, lastLogin }) => {
   try {
     const normalizedAdmin = normalizeEmail(adminEmail);
     const normalizedTarget = normalizeEmail(targetEmail);
@@ -342,7 +342,7 @@ export const adminUpdateUserInfo = async (adminEmail, targetEmail, { displayName
       return { success: false, error: "Няма права за тази операция" };
     }
 
-    return await updateUserProfileInfo(normalizedTarget, { displayName, joinDate });
+    return await updateUserProfileInfo(normalizedTarget, { displayName, joinDate, lastLogin });
   } catch (error) {
     console.error("Error updating user info:", error);
     return { success: false, error: "Грешка при обновяване на потребителя" };

@@ -732,7 +732,7 @@ export const getActivityStats = async (userEmail, days = 30) => {
 };
 
 // Обновяване на профилна информация от администратор
-export const updateUserProfileInfo = async (userEmail, { displayName, joinDate }) => {
+export const updateUserProfileInfo = async (userEmail, { displayName, joinDate, lastLogin }) => {
   try {
     const normalizedEmail = normalizeEmail(userEmail);
     const profileRef = doc(db, "users", normalizedEmail, "profile", "info");
@@ -743,6 +743,11 @@ export const updateUserProfileInfo = async (userEmail, { displayName, joinDate }
       updates.joinDate = joinDate instanceof Date
         ? Timestamp.fromDate(joinDate)
         : joinDate;
+    }
+    if (lastLogin !== undefined) {
+      updates.lastLogin = lastLogin instanceof Date
+        ? Timestamp.fromDate(lastLogin)
+        : lastLogin;
     }
 
     await updateDoc(profileRef, updates);
