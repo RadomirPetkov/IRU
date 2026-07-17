@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx react-scripts *)"
+      "Bash(npx react-scripts *)",
+      "Bash(xargs grep -l \"docx\\\\|doc\\\\|report\\\\|export\")",
+      "Bash(python -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const j = require\\('jszip'\\); console.log\\('jszip ok:', j.version\\)\")",
+      "Bash(node -e \"const j = require\\('jszip'\\); console.log\\('jszip ok'\\)\")",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -37,6 +37,8 @@ import {
 import { courses, getCoursesStats, reloadCourses } from "../data/coursesData";
 import AdminUserCreation from "../components/AdminUserCreation";
 import EnhancedCourseManagement from "../components/CourseManagement";
+import { getReportData } from "../firebase/reports";
+import { generateActivityReport } from "../utils/reportGenerator";
 
 const AdminDashboard = () => {
   const { isAuthenticated, hasPermission, user, userProfile } = useAuth();
@@ -146,7 +148,7 @@ const AdminDashboard = () => {
     let joinTimeStr = "00:00";
     if (ts) {
       const d = ts.toDate ? ts.toDate() : new Date(ts);
-      joinDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      joinDateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
       joinTimeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     }
     const ll = userData.lastLogin;
@@ -154,7 +156,7 @@ const AdminDashboard = () => {
     let lastLoginTimeStr = "00:00";
     if (ll) {
       const d = ll.toDate ? ll.toDate() : new Date(ll);
-      lastLoginDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      lastLoginDateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
       lastLoginTimeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     }
     setEditForm({ displayName: userData.displayName || "", joinDate: joinDateStr, joinTime: joinTimeStr, lastLoginDate: lastLoginDateStr, lastLoginTime: lastLoginTimeStr });
@@ -163,8 +165,9 @@ const AdminDashboard = () => {
 
   const handleSaveUserInfo = async () => {
     setEditSaving(true);
-    const joinDate = editForm.joinDate ? new Date(`${editForm.joinDate}T${editForm.joinTime || "00:00"}`) : undefined;
-    const lastLogin = editForm.lastLoginDate ? new Date(`${editForm.lastLoginDate}T${editForm.lastLoginTime || "00:00"}`) : undefined;
+    const parseDMY = (str) => { const [d, m, y] = str.split("/"); return `${y}-${m}-${d}`; };
+    const joinDate = /^\d{2}\/\d{2}\/\d{4}$/.test(editForm.joinDate) ? new Date(`${parseDMY(editForm.joinDate)}T${editForm.joinTime || "00:00"}`) : undefined;
+    const lastLogin = /^\d{2}\/\d{2}\/\d{4}$/.test(editForm.lastLoginDate) ? new Date(`${parseDMY(editForm.lastLoginDate)}T${editForm.lastLoginTime || "00:00"}`) : undefined;
     const result = await adminUpdateUserInfo(user?.email, selectedUser.email, {
       displayName: editForm.displayName,
       joinDate,
@@ -368,6 +371,17 @@ const AdminDashboard = () => {
             >
               <BookOpen className="inline mr-2" size={18} />
               Курсове ({coursesData.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("reports")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "reports"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <FileText className="inline mr-2" size={18} />
+              Справки
             </button>
           </div>
         </div>
@@ -642,9 +656,14 @@ const AdminDashboard = () => {
                               <div>
                                 <label className="block text-xs text-gray-500 mb-1">Дата на регистрация</label>
                                 <input
-                                  type="date"
+                                  type="text"
                                   value={editForm.joinDate}
-                                  onChange={(e) => setEditForm((f) => ({ ...f, joinDate: e.target.value }))}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9/]/g, "").slice(0, 10);
+                                    setEditForm((f) => ({ ...f, joinDate: val }));
+                                  }}
+                                  placeholder="дд/мм/гггг"
+                                  maxLength={10}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </div>
@@ -665,9 +684,14 @@ const AdminDashboard = () => {
                               <div>
                                 <label className="block text-xs text-gray-500 mb-1">Последен вход — дата</label>
                                 <input
-                                  type="date"
+                                  type="text"
                                   value={editForm.lastLoginDate}
-                                  onChange={(e) => setEditForm((f) => ({ ...f, lastLoginDate: e.target.value }))}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9/]/g, "").slice(0, 10);
+                                    setEditForm((f) => ({ ...f, lastLoginDate: val }));
+                                  }}
+                                  placeholder="дд/мм/гггг"
+                                  maxLength={10}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </div>
@@ -888,6 +912,10 @@ const AdminDashboard = () => {
               {/* Course Management Component */}
               <EnhancedCourseManagement adminEmail={user?.email} />
             </div>
+          )}
+
+          {activeTab === "reports" && (
+            <ReportsTab users={users} />
           )}
 
           {/* Error Display */}
@@ -1286,6 +1314,195 @@ const UserActivityStats = ({ userStats, formatDate, showActivityForm, setShowAct
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+const PROGRAMS = [
+  'Базово ниво, ниво 1 и 2',
+  'Средно ниво, ниво 3 и 4',
+];
+
+const ReportsTab = ({ users }) => {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedEmails, setSelectedEmails] = useState([]);
+  const [program, setProgram] = useState(PROGRAMS[0]);
+  const [loading, setLoading] = useState(false);
+  const [reportError, setReportError] = useState(null);
+
+  const toggleUser = (email) => {
+    setSelectedEmails(prev =>
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const handleGenerate = async () => {
+    setReportError(null);
+
+    if (!startDate || !endDate) {
+      setReportError('Изберете начална и крайна дата.');
+      return;
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) {
+      setReportError('Началната дата не може да е след крайната.');
+      return;
+    }
+    if (selectedEmails.length === 0) {
+      setReportError('Изберете поне един потребител.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const sessionData = await getReportData(selectedEmails, start, end);
+
+      const usersData = sessionData.map(({ email, loginsByDay }) => {
+        const info = users.find(u => u.email === email);
+        return {
+          displayName: info?.displayName || email,
+          email,
+          loginsByDay,
+        };
+      });
+
+      await generateActivityReport({ usersData, startDate: start, endDate: end, program });
+    } catch (err) {
+      setReportError('Грешка при генериране: ' + (err.message || err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Справка за активност</h2>
+        <p className="text-gray-600 mt-1">
+          Генерира .docx файл с история на влизанията за избрани потребители в зададен период.
+        </p>
+      </div>
+
+      {/* Period */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h3 className="font-semibold text-gray-700 mb-4">
+          <Calendar className="inline mr-2 text-indigo-500" size={18} />
+          Период
+        </h3>
+        <div className="flex flex-wrap gap-6 items-end">
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">От</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">До</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+          {startDate && endDate && new Date(startDate) <= new Date(endDate) && (
+            <span className="text-sm text-gray-500 pb-2">
+              {Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1} дни
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Program */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h3 className="font-semibold text-gray-700 mb-4">
+          <BookOpen className="inline mr-2 text-indigo-500" size={18} />
+          Програма
+        </h3>
+        <select
+          value={program}
+          onChange={e => setProgram(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          {PROGRAMS.map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Users */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-700">
+            <Users className="inline mr-2 text-indigo-500" size={18} />
+            Потребители ({selectedEmails.length} избрани)
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedEmails(users.map(u => u.email))}
+              className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+            >
+              Избери всички
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={() => setSelectedEmails([])}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Изчисти
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+          {users.map(u => (
+            <label
+              key={u.email}
+              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-colors ${
+                selectedEmails.includes(u.email)
+                  ? 'border-indigo-300 bg-indigo-50'
+                  : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selectedEmails.includes(u.email)}
+                onChange={() => toggleUser(u.email)}
+                className="accent-indigo-600"
+              />
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-gray-800 truncate">{u.displayName}</div>
+                <div className="text-xs text-gray-400 truncate">{u.email}</div>
+              </div>
+            </label>
+          ))}
+          {users.length === 0 && (
+            <p className="text-sm text-gray-400 col-span-3">Няма заредени потребители.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Error */}
+      {reportError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="text-sm">{reportError}</span>
+        </div>
+      )}
+
+      {/* Generate */}
+      <button
+        onClick={handleGenerate}
+        disabled={loading}
+        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-6 py-3 rounded-xl transition-colors"
+      >
+        <FileText size={18} />
+        {loading ? 'Генериране…' : 'Изтегли справка (.docx)'}
+      </button>
     </div>
   );
 };
