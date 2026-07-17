@@ -1330,6 +1330,12 @@ const ReportsTab = ({ users }) => {
   const [program, setProgram] = useState(PROGRAMS[0]);
   const [loading, setLoading] = useState(false);
   const [reportError, setReportError] = useState(null);
+  const [userSearch, setUserSearch] = useState('');
+
+  const filteredUsers = users.filter(u =>
+    u.displayName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.email?.toLowerCase().includes(userSearch.toLowerCase())
+  );
 
   const toggleUser = (email) => {
     setSelectedEmails(prev =>
@@ -1437,17 +1443,17 @@ const ReportsTab = ({ users }) => {
 
       {/* Users */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-700">
             <Users className="inline mr-2 text-indigo-500" size={18} />
             Потребители ({selectedEmails.length} избрани)
           </h3>
           <div className="flex gap-2">
             <button
-              onClick={() => setSelectedEmails(users.map(u => u.email))}
+              onClick={() => setSelectedEmails(filteredUsers.map(u => u.email))}
               className="text-xs text-indigo-600 hover:text-indigo-800 underline"
             >
-              Избери всички
+              Избери видимите
             </button>
             <span className="text-gray-300">|</span>
             <button
@@ -1458,8 +1464,15 @@ const ReportsTab = ({ users }) => {
             </button>
           </div>
         </div>
+        <input
+          type="text"
+          value={userSearch}
+          onChange={e => setUserSearch(e.target.value)}
+          placeholder="Търси по име или имейл…"
+          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
-          {users.map(u => (
+          {filteredUsers.map(u => (
             <label
               key={u.email}
               className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border transition-colors ${
@@ -1480,8 +1493,10 @@ const ReportsTab = ({ users }) => {
               </div>
             </label>
           ))}
-          {users.length === 0 && (
-            <p className="text-sm text-gray-400 col-span-3">Няма заредени потребители.</p>
+          {filteredUsers.length === 0 && (
+            <p className="text-sm text-gray-400 col-span-3">
+              {users.length === 0 ? 'Няма заредени потребители.' : 'Няма съвпадения.'}
+            </p>
           )}
         </div>
       </div>
